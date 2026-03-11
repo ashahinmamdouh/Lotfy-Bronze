@@ -80,7 +80,7 @@ export default function QualityControl() {
             {tabs.map((tab) => (
               <NavLink
                 key={tab.name}
-                to={tab.path}
+                to={`/quality/${tab.path}`}
                 className={({ isActive }) =>
                   cn(
                     isActive

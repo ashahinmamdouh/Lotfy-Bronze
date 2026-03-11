@@ -1,5 +1,6 @@
 import React from 'react';
 import { BarChart3, Download, FileText } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 const reports = [
   { id: 1, name: 'Work Order Status Report', description: 'Current status of all active and completed work orders.' },
@@ -11,6 +12,20 @@ const reports = [
 ];
 
 export default function Reporting() {
+  const handleExportExcel = (reportName: string) => {
+    // Generate some mock data for the report
+    const mockData = [
+      { id: 1, metric: 'Value A', score: 85 },
+      { id: 2, metric: 'Value B', score: 92 },
+      { id: 3, metric: 'Value C', score: 78 },
+    ];
+
+    const worksheet = XLSX.utils.json_to_sheet(mockData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Report Data");
+    XLSX.writeFile(workbook, `${reportName.replace(/\s+/g, '_').toLowerCase()}.xlsx`);
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -40,7 +55,10 @@ export default function Reporting() {
                 <button className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                   <FileText className="h-4 w-4 mr-1 text-red-500" /> PDF
                 </button>
-                <button className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                <button 
+                  onClick={() => handleExportExcel(report.name)}
+                  className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
                   <Download className="h-4 w-4 mr-1 text-green-600" /> Excel
                 </button>
               </div>

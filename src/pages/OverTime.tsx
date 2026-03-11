@@ -111,7 +111,7 @@ export default function OverTime() {
             {tabs.map((tab) => (
               <NavLink
                 key={tab.name}
-                to={tab.path}
+                to={`/overtime/${tab.path}`}
                 className={({ isActive }) =>
                   cn(
                     isActive

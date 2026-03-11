@@ -1,91 +1,137 @@
 import React, { useState } from 'react';
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
-import { Plus, Search, Download, Upload, Edit, Trash2, Database } from 'lucide-react';
+import { Database } from 'lucide-react';
+import { DataTable, Column } from '../components/DataTable';
 
 const tabs = [
   { name: 'MATERIALS', path: 'materials' },
   { name: 'FG PRODUCTS', path: 'products' },
   { name: 'MANUFACTURING PROCESSES', path: 'processes' },
+  { name: 'STATUS TYPES', path: 'status' },
+  { name: 'MACHINES', path: 'machines' },
   { name: 'MOLDS', path: 'molds' },
+  { name: 'ROUTING MASTER', path: 'routing' },
   { name: 'WORKSHOPS', path: 'workshops' },
   { name: 'OPERATORS', path: 'operators' },
   { name: 'REJECTION REASONS', path: 'rejections' },
 ];
 
-const mockMaterials = [
-  { id: 'M001', code: 'BRZ-01', name: 'Bronze C93200', family: 'Bronze', density: 8.93, alloy: 'Cu 83%, Sn 7%, Pb 7%, Zn 3%', scrapRatio: 5, process: 'Sand Casting', status: 'Active' },
-  { id: 'M002', code: 'BRZ-02', name: 'Aluminum Bronze C95400', family: 'Bronze', density: 7.45, alloy: 'Cu 85%, Al 11%, Fe 4%', scrapRatio: 4, process: 'Centrifugal Casting', status: 'Active' },
+// --- Mock Data & Columns ---
+
+// Materials
+const materialsColumns: Column[] = [
+  { header: 'Material Code', accessor: 'code' },
+  { header: 'Material Name', accessor: 'name' },
+  { header: 'Material Family', accessor: 'family' },
+  { header: 'Density (g/cm³)', accessor: 'density' },
+  { header: 'Standard Alloy Composition', accessor: 'alloy' },
+  { header: 'Scrap Ratio %', accessor: 'scrapRatio' },
+  { header: 'Default Process', accessor: 'process' },
+  { header: 'Status', accessor: 'status' },
+];
+const initialMaterials = [
+  { code: 'BRZ-01', name: 'Bronze C93200', family: 'Bronze', density: '8.93', alloy: 'Cu 83%, Sn 7%, Pb 7%, Zn 3%', scrapRatio: '5%', process: 'Sand Casting', status: 'Active' },
+  { code: 'BRZ-02', name: 'Aluminum Bronze C95400', family: 'Bronze', density: '7.45', alloy: 'Cu 85%, Al 11%, Fe 4%', scrapRatio: '4%', process: 'Centrifugal Casting', status: 'Active' },
 ];
 
-function MaterialsList() {
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div className="relative w-96">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search className="h-4 w-4 text-gray-400" />
-          </div>
-          <input
-            type="text"
-            className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-none leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-black focus:border-black sm:text-sm"
-            placeholder="Search Materials..."
-          />
-        </div>
-        <div className="flex gap-3">
-          <button className="inline-flex items-center px-4 py-2.5 border border-gray-300 text-sm font-bold tracking-wider uppercase text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black transition-colors">
-            <Upload className="h-4 w-4 mr-2" />
-            Upload
-          </button>
-          <button className="inline-flex items-center px-4 py-2.5 border border-gray-300 text-sm font-bold tracking-wider uppercase text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black transition-colors">
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </button>
-        </div>
-      </div>
+// Products
+const productsColumns: Column[] = [
+  { header: 'Product Type', accessor: 'type' },
+  { header: 'Dimensions Format', accessor: 'dimensions' },
+  { header: 'Compatible Processes', accessor: 'processes' },
+];
+const initialProducts = [
+  { type: 'Bars', dimensions: 'OD, ID, Length', processes: 'Continuous Casting, Stock' },
+  { type: 'Bushings', dimensions: 'OD, ID, Length', processes: 'Centrifugal Casting, Stock' },
+  { type: 'Plates', dimensions: 'Width, Length, Height', processes: 'Sand Casting, Stock' },
+  { type: 'Impellers', dimensions: 'Diameter, Impeller Number, Drawing reference', processes: 'Sand Casting, Stock' },
+  { type: 'Custom', dimensions: 'Custom', processes: 'Any' },
+];
 
-      <div className="flex flex-col">
-        <div className="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
-          <div className="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
-            <div className="bg-white border border-gray-200">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-white">
-                  <tr>
-                    <th scope="col" className="px-6 py-4 text-left text-[11px] font-bold text-gray-500 uppercase tracking-widest">Code</th>
-                    <th scope="col" className="px-6 py-4 text-left text-[11px] font-bold text-gray-500 uppercase tracking-widest">Name</th>
-                    <th scope="col" className="px-6 py-4 text-left text-[11px] font-bold text-gray-500 uppercase tracking-widest">Family</th>
-                    <th scope="col" className="px-6 py-4 text-left text-[11px] font-bold text-gray-500 uppercase tracking-widest">Density</th>
-                    <th scope="col" className="px-6 py-4 text-left text-[11px] font-bold text-gray-500 uppercase tracking-widest">Status</th>
-                    <th scope="col" className="relative px-6 py-4"><span className="sr-only">Actions</span></th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-100">
-                  {mockMaterials.map((material) => (
-                    <tr key={material.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-5 whitespace-nowrap text-sm font-medium text-gray-900">{material.code}</td>
-                      <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-900">{material.name}</td>
-                      <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-900">{material.family}</td>
-                      <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-900">{material.density} g/cm³</td>
-                      <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-900">
-                        {material.status}
-                      </td>
-                      <td className="px-6 py-5 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex justify-end gap-3">
-                          <button className="text-gray-400 hover:text-black transition-colors"><Edit className="h-4 w-4" /></button>
-                          <button className="text-gray-400 hover:text-red-600 transition-colors"><Trash2 className="h-4 w-4" /></button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+// Processes
+const processesColumns: Column[] = [
+  { header: 'Process ID', accessor: 'id' },
+  { header: 'Process Name', accessor: 'name' },
+  { header: 'Description', accessor: 'description' },
+  { header: 'Default Routing', accessor: 'routing' },
+  { header: 'Compatible Products', accessor: 'products' },
+];
+const initialProcesses = [
+  { id: 'PRC-01', name: 'Sand Casting', description: 'Traditional sand mold casting', routing: 'RT-01', products: 'Impellers, Plates' },
+  { id: 'PRC-02', name: 'Continuous Casting', description: 'Continuous casting for long products', routing: 'RT-02', products: 'Bars' },
+  { id: 'PRC-03', name: 'Centrifugal Casting (Vertical)', description: 'Vertical centrifugal casting', routing: 'RT-03', products: 'Bushings' },
+  { id: 'PRC-04', name: 'Stock Material', description: 'Raw material from stock', routing: 'RT-04', products: 'Bars, Plates' },
+];
+
+// Status Types
+const statusColumns: Column[] = [
+  { header: 'Status Name', accessor: 'name' },
+];
+const initialStatus = [
+  { name: 'Not Started – Waiting Material' },
+  { name: 'Not Started – Waiting Technical Office' },
+  { name: 'Not Started - Planned' },
+  { name: 'In Production' },
+  { name: 'Under Inspection' },
+  { name: 'Rework' },
+  { name: 'Completed' },
+  { name: 'Cancelled' },
+  { name: 'On Hold' },
+];
+
+// Machines
+const machinesColumns: Column[] = [
+  { header: 'Machine ID', accessor: 'id' },
+  { header: 'Workshop', accessor: 'workshop' },
+  { header: 'Machine Name', accessor: 'name' },
+  { header: 'Machine Number', accessor: 'number' },
+  { header: 'Machine Type', accessor: 'type' },
+  { header: 'Production Rate', accessor: 'rate' },
+  { header: 'Capacity Limits', accessor: 'capacity' },
+  { header: 'Operator Name', accessor: 'operator' },
+  { header: 'Setup Time', accessor: 'setup' },
+  { header: 'Changeover Time', accessor: 'changeover' },
+  { header: 'Maintenance Interval', accessor: 'maintenance' },
+  { header: 'Status', accessor: 'status' },
+];
+const initialMachines = [
+  { id: 'MAC-01', workshop: 'Foundry', name: 'Induction Furnace A', number: 'F-01', type: 'Furnace', rate: '500 kg/hr', capacity: '1000 kg', operator: 'Ahmed', setup: '30 min', changeover: '60 min', maintenance: 'Weekly', status: 'Running' },
+];
+
+// Molds
+const moldsColumns: Column[] = [
+  { header: 'Manufacturing Process', accessor: 'process' },
+  { header: 'Product', accessor: 'product' },
+  { header: 'Mold Number', accessor: 'number' },
+  { header: 'Mold Description', accessor: 'description' },
+  { header: 'Diameter Range', accessor: 'diameter' },
+  { header: 'Length Range', accessor: 'length' },
+  { header: 'Process Time', accessor: 'time' },
+  { header: 'Mold Type', accessor: 'type' },
+  { header: 'Usage Counter', accessor: 'usage' },
+  { header: 'Maintenance Cycle', accessor: 'maintenance' },
+  { header: 'Approx. Product Weight', accessor: 'weight' },
+  { header: 'Mold Availability', accessor: 'status' },
+];
+const initialMolds = [
+  { process: 'Centrifugal Casting', product: 'Bushings', number: 'MLD-101', description: 'Standard Bushing Mold', diameter: '50-100mm', length: '200mm', time: '15 min', type: 'Steel', usage: '150', maintenance: '500 uses', weight: '10 kg', status: 'Running' },
+];
+
+// Routing Master
+const routingColumns: Column[] = [
+  { header: 'Routing ID', accessor: 'id' },
+  { header: 'Process Type', accessor: 'process' },
+  { header: 'Operation Sequence', accessor: 'sequence' },
+  { header: 'Operation Name', accessor: 'name' },
+  { header: 'Machine Type', accessor: 'machine' },
+  { header: 'Standard Time', accessor: 'time' },
+  { header: 'Quality Check Required', accessor: 'quality' },
+];
+const initialRouting = [
+  { id: 'RT-01', process: 'Sand Casting', sequence: '10', name: 'Pattern Preparation', machine: 'Manual', time: '30 min', quality: 'No' },
+  { id: 'RT-01', process: 'Sand Casting', sequence: '20', name: 'Molding', machine: 'Molding Machine', time: '45 min', quality: 'Yes' },
+];
 
 function PlaceholderTab({ title }: { title: string }) {
   return (
@@ -98,20 +144,98 @@ function PlaceholderTab({ title }: { title: string }) {
 }
 
 export default function MasterData() {
+  const [materials, setMaterials] = useState(initialMaterials);
+  const [products, setProducts] = useState(initialProducts);
+  const [processes, setProcesses] = useState(initialProcesses);
+  const [status, setStatus] = useState(initialStatus);
+  const [machines, setMachines] = useState(initialMachines);
+  const [molds, setMolds] = useState(initialMolds);
+  const [routing, setRouting] = useState(initialRouting);
+
+  // Materials
+  const handleAddMaterial = (item: any) => setMaterials([...materials, item]);
+  const handleAddMultipleMaterials = (items: any[]) => setMaterials([...materials, ...items]);
+  const handleEditMaterial = (item: any, index: number) => {
+    const newData = [...materials];
+    newData[index] = item;
+    setMaterials(newData);
+  };
+  const handleDeleteMaterial = (index: number) => setMaterials(materials.filter((_, i) => i !== index));
+
+  // Products
+  const handleAddProduct = (item: any) => setProducts([...products, item]);
+  const handleAddMultipleProducts = (items: any[]) => setProducts([...products, ...items]);
+  const handleEditProduct = (item: any, index: number) => {
+    const newData = [...products];
+    newData[index] = item;
+    setProducts(newData);
+  };
+  const handleDeleteProduct = (index: number) => setProducts(products.filter((_, i) => i !== index));
+
+  // Processes
+  const handleAddProcess = (item: any) => setProcesses([...processes, item]);
+  const handleAddMultipleProcesses = (items: any[]) => setProcesses([...processes, ...items]);
+  const handleEditProcess = (item: any, index: number) => {
+    const newData = [...processes];
+    newData[index] = item;
+    setProcesses(newData);
+  };
+  const handleDeleteProcess = (index: number) => setProcesses(processes.filter((_, i) => i !== index));
+
+  // Status
+  const handleAddStatus = (item: any) => setStatus([...status, item]);
+  const handleAddMultipleStatus = (items: any[]) => setStatus([...status, ...items]);
+  const handleEditStatus = (item: any, index: number) => {
+    const newData = [...status];
+    newData[index] = item;
+    setStatus(newData);
+  };
+  const handleDeleteStatus = (index: number) => setStatus(status.filter((_, i) => i !== index));
+
+  // Machines
+  const handleAddMachine = (item: any) => setMachines([...machines, item]);
+  const handleAddMultipleMachines = (items: any[]) => setMachines([...machines, ...items]);
+  const handleEditMachine = (item: any, index: number) => {
+    const newData = [...machines];
+    newData[index] = item;
+    setMachines(newData);
+  };
+  const handleDeleteMachine = (index: number) => setMachines(machines.filter((_, i) => i !== index));
+
+  // Molds
+  const handleAddMold = (item: any) => setMolds([...molds, item]);
+  const handleAddMultipleMolds = (items: any[]) => setMolds([...molds, ...items]);
+  const handleEditMold = (item: any, index: number) => {
+    const newData = [...molds];
+    newData[index] = item;
+    setMolds(newData);
+  };
+  const handleDeleteMold = (index: number) => setMolds(molds.filter((_, i) => i !== index));
+
+  // Routing
+  const handleAddRouting = (item: any) => setRouting([...routing, item]);
+  const handleAddMultipleRouting = (items: any[]) => setRouting([...routing, ...items]);
+  const handleEditRouting = (item: any, index: number) => {
+    const newData = [...routing];
+    newData[index] = item;
+    setRouting(newData);
+  };
+  const handleDeleteRouting = (index: number) => setRouting(routing.filter((_, i) => i !== index));
+
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
       <div>
-        <nav className="flex flex-wrap gap-2 border-b border-gray-200 pb-4" aria-label="Tabs">
+        <nav className="flex flex-wrap gap-x-2 gap-y-4" aria-label="Tabs">
           {tabs.map((tab) => (
             <NavLink
               key={tab.name}
-              to={tab.path}
+              to={`/master-data/${tab.path}`}
               className={({ isActive }) =>
                 cn(
                   isActive
                     ? 'bg-[#141414] text-white'
-                    : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100',
-                  'px-4 py-2.5 text-[11px] font-bold tracking-widest uppercase transition-colors'
+                    : 'text-gray-500 hover:text-gray-900',
+                  'px-4 py-2.5 text-[12px] font-bold tracking-widest uppercase transition-colors'
                 )
               }
             >
@@ -124,10 +248,13 @@ export default function MasterData() {
       <div className="pt-2">
         <Routes>
           <Route path="/" element={<Navigate to="materials" replace />} />
-          <Route path="materials" element={<MaterialsList />} />
-          <Route path="products" element={<PlaceholderTab title="Products" />} />
-          <Route path="processes" element={<PlaceholderTab title="Manufacturing Process" />} />
-          <Route path="molds" element={<PlaceholderTab title="Molds" />} />
+          <Route path="materials" element={<DataTable columns={materialsColumns} data={materials} onAdd={handleAddMaterial} onAddMultiple={handleAddMultipleMaterials} onEdit={handleEditMaterial} onDelete={handleDeleteMaterial} searchPlaceholder="Search Materials..." />} />
+          <Route path="products" element={<DataTable columns={productsColumns} data={products} onAdd={handleAddProduct} onAddMultiple={handleAddMultipleProducts} onEdit={handleEditProduct} onDelete={handleDeleteProduct} searchPlaceholder="Search Products..." />} />
+          <Route path="processes" element={<DataTable columns={processesColumns} data={processes} onAdd={handleAddProcess} onAddMultiple={handleAddMultipleProcesses} onEdit={handleEditProcess} onDelete={handleDeleteProcess} searchPlaceholder="Search Processes..." />} />
+          <Route path="status" element={<DataTable columns={statusColumns} data={status} onAdd={handleAddStatus} onAddMultiple={handleAddMultipleStatus} onEdit={handleEditStatus} onDelete={handleDeleteStatus} searchPlaceholder="Search Status Types..." />} />
+          <Route path="machines" element={<DataTable columns={machinesColumns} data={machines} onAdd={handleAddMachine} onAddMultiple={handleAddMultipleMachines} onEdit={handleEditMachine} onDelete={handleDeleteMachine} searchPlaceholder="Search Machines..." />} />
+          <Route path="molds" element={<DataTable columns={moldsColumns} data={molds} onAdd={handleAddMold} onAddMultiple={handleAddMultipleMolds} onEdit={handleEditMold} onDelete={handleDeleteMold} searchPlaceholder="Search Molds..." />} />
+          <Route path="routing" element={<DataTable columns={routingColumns} data={routing} onAdd={handleAddRouting} onAddMultiple={handleAddMultipleRouting} onEdit={handleEditRouting} onDelete={handleDeleteRouting} searchPlaceholder="Search Routing..." />} />
           <Route path="workshops" element={<PlaceholderTab title="Workshops" />} />
           <Route path="operators" element={<PlaceholderTab title="Operators" />} />
           <Route path="rejections" element={<PlaceholderTab title="Rejection Reasons" />} />

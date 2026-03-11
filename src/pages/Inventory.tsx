@@ -100,7 +100,7 @@ export default function Inventory() {
             {tabs.map((tab) => (
               <NavLink
                 key={tab.name}
-                to={tab.path}
+                to={`/inventory/${tab.path}`}
                 className={({ isActive }) =>
                   cn(
                     isActive

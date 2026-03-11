@@ -180,7 +180,7 @@ export default function WorkshopExecution() {
             {tabs.map((tab) => (
               <NavLink
                 key={tab.name}
-                to={tab.path}
+                to={`/workshop/${tab.path}`}
                 className={({ isActive }) =>
                   cn(
                     isActive

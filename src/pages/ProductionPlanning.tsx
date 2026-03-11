@@ -112,7 +112,7 @@ export default function ProductionPlanning() {
             {tabs.map((tab) => (
               <NavLink
                 key={tab.name}
-                to={tab.path}
+                to={`/planning/${tab.path}`}
                 className={({ isActive }) =>
                   cn(
                     isActive

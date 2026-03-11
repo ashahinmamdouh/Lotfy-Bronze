@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { Plus, Search, Download, Upload, Edit, Trash2, FileText } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 const tabs = [
   { name: 'Open Work Orders', path: 'open' },
@@ -15,6 +16,18 @@ const mockOrders = [
 ];
 
 function OpenOrdersList() {
+  const handleExport = () => {
+    if (mockOrders.length === 0) {
+      alert("No data to export");
+      return;
+    }
+
+    const worksheet = XLSX.utils.json_to_sheet(mockOrders);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Work Orders");
+    XLSX.writeFile(workbook, "work_orders.xlsx");
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -29,7 +42,10 @@ function OpenOrdersList() {
           />
         </div>
         <div className="flex gap-2">
-          <button className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+          <button 
+            onClick={handleExport}
+            className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
             <Download className="h-4 w-4 mr-2" />
             Export
           </button>
@@ -219,7 +235,7 @@ export default function WorkOrders() {
             {tabs.map((tab) => (
               <NavLink
                 key={tab.name}
-                to={tab.path}
+                to={`/work-orders/${tab.path}`}
                 className={({ isActive }) =>
                   cn(
                     isActive

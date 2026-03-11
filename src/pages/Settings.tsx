@@ -91,7 +91,7 @@ export default function Settings() {
             {tabs.map((tab) => (
               <NavLink
                 key={tab.name}
-                to={tab.path}
+                to={`/settings/${tab.path}`}
                 className={({ isActive }) =>
                   cn(
                     isActive

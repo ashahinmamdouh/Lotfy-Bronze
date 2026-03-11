@@ -48,7 +48,7 @@ export default function Layout() {
   };
 
   return (
-    <div className="flex h-screen bg-[#f9f9f6] font-sans text-gray-900">
+    <div className="flex h-screen bg-[#f5f5f0] font-sans text-gray-900">
       {/* Mobile sidebar */}
       <div className={cn("fixed inset-0 z-50 lg:hidden", sidebarOpen ? "block" : "hidden")}>
         <div className="fixed inset-0 bg-gray-900/80" onClick={() => setSidebarOpen(false)} />
@@ -150,7 +150,7 @@ export default function Layout() {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col lg:pl-72 min-w-0">
-        <header className="h-24 bg-white/50 backdrop-blur-sm border-b border-gray-200 flex items-center justify-between px-4 sm:px-8 shrink-0 sticky top-0 z-10">
+        <header className="h-24 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-8 shrink-0 sticky top-0 z-10">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setSidebarOpen(true)}
@@ -158,11 +158,16 @@ export default function Layout() {
             >
               <Menu className="w-6 h-6" />
             </button>
-            <h1 className="text-2xl font-serif italic text-gray-900">{getPageTitle()}</h1>
+            <h1 className="text-[28px] font-serif italic text-[#0a192f] tracking-tight">{getPageTitle()}</h1>
           </div>
           
-          <div className="flex items-center gap-4 text-sm text-gray-500 font-medium">
-            {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+          <div className="flex flex-col items-end justify-center">
+            <div className="text-[15px] text-gray-900 font-medium">
+              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+            </div>
+            <div className="text-[11px] font-bold tracking-widest text-gray-400 uppercase mt-0.5">
+              Shift A &bull; Running
+            </div>
           </div>
         </header>
 
