@@ -155,6 +155,17 @@ const initialRouting = [
   { id: 'RT-01', process: 'Sand Casting', sequence: '20', name: 'Molding', machine: 'Molding Machine', time: '45 min', quality: 'Yes' },
 ];
 
+// Rejection Reasons
+const rejectionsColumns: Column[] = [
+  { header: 'Rejection Code', accessor: 'code' },
+  { header: 'Rejection Name', accessor: 'name' },
+  { header: 'Defect Description', accessor: 'description' },
+];
+const initialRejections = [
+  { code: 'REJ-01', name: 'Porosity', description: 'Gas holes or shrinkage cavities in the casting' },
+  { code: 'REJ-02', name: 'Inclusions', description: 'Non-metallic particles trapped in the metal' },
+];
+
 function PlaceholderTab({ title }: { title: string }) {
   return (
     <div className="py-12 text-center">
@@ -175,6 +186,7 @@ export default function MasterData() {
   const [machines, setMachines] = useState(initialMachines);
   const [molds, setMolds] = useState(initialMolds);
   const [routing, setRouting] = useState(initialRouting);
+  const [rejections, setRejections] = useState(initialRejections);
 
   // Materials
   const handleAddMaterial = (item: any) => setMaterials([...materials, item]);
@@ -266,6 +278,16 @@ export default function MasterData() {
   };
   const handleDeleteRouting = (index: number) => setRouting(routing.filter((_, i) => i !== index));
 
+  // Rejections
+  const handleAddRejection = (item: any) => setRejections([...rejections, item]);
+  const handleAddMultipleRejections = (items: any[]) => setRejections([...rejections, ...items]);
+  const handleEditRejection = (item: any, index: number) => {
+    const newData = [...rejections];
+    newData[index] = item;
+    setRejections(newData);
+  };
+  const handleDeleteRejection = (index: number) => setRejections(rejections.filter((_, i) => i !== index));
+
   const dynamicRoutingColumns = routingColumns.map(col => {
     if (col.accessor === 'process') {
       return { ...col, options: processes.map(p => p.type) };
@@ -325,7 +347,7 @@ export default function MasterData() {
           <Route path="machines" element={<DataTable columns={dynamicMachinesColumns} data={machines} onAdd={handleAddMachine} onAddMultiple={handleAddMultipleMachines} onEdit={handleEditMachine} onDelete={handleDeleteMachine} searchPlaceholder="Search Machines..." exportFileName="Machines" />} />
           <Route path="molds" element={<DataTable columns={moldsColumns} data={molds} onAdd={handleAddMold} onAddMultiple={handleAddMultipleMolds} onEdit={handleEditMold} onDelete={handleDeleteMold} searchPlaceholder="Search Molds..." exportFileName="Molds" />} />
           <Route path="routing" element={<DataTable columns={dynamicRoutingColumns} data={routing} onAdd={handleAddRouting} onAddMultiple={handleAddMultipleRouting} onEdit={handleEditRouting} onDelete={handleDeleteRouting} searchPlaceholder="Search Routing..." exportFileName="Routing Master" />} />
-          <Route path="rejections" element={<PlaceholderTab title="Rejection Reasons" />} />
+          <Route path="rejections" element={<DataTable columns={rejectionsColumns} data={rejections} onAdd={handleAddRejection} onAddMultiple={handleAddMultipleRejections} onEdit={handleEditRejection} onDelete={handleDeleteRejection} searchPlaceholder="Search Rejection Reasons..." exportFileName="Rejection Reasons" />} />
         </Routes>
       </div>
     </div>
