@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { Factory, Play, Square, Save } from 'lucide-react';
+import { useWorkOrders } from '../context/WorkOrderContext';
 
 const tabs = [
   { name: 'Workshop Record', path: 'record' },
@@ -9,6 +10,8 @@ const tabs = [
 ];
 
 function WorkshopRecord() {
+  const { orders } = useWorkOrders();
+
   return (
     <div className="max-w-3xl mx-auto">
       <form className="space-y-8 divide-y divide-gray-200">
@@ -66,9 +69,10 @@ function WorkshopRecord() {
                 <label htmlFor="workorder" className="block text-sm font-medium text-gray-700">Work Order</label>
                 <div className="mt-1">
                   <select id="workorder" name="workorder" className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
-                    <option>WO-2026-001 - Bronze Bushing C93200</option>
-                    <option>WO-2026-002 - Aluminum Bronze C95400</option>
-                    <option>None (Maintenance/Setup)</option>
+                    {orders.map(wo => (
+                      <option key={wo.id} value={wo.id}>{wo.id} - {wo.material} {wo.process}</option>
+                    ))}
+                    <option value="none">None (Maintenance/Setup)</option>
                   </select>
                 </div>
               </div>

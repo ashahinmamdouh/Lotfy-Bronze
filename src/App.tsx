@@ -12,26 +12,50 @@ import OverTime from './pages/OverTime';
 import Reporting from './pages/Reporting';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
+import { WorkOrderProvider } from './context/WorkOrderContext';
+import { FirebaseProvider, useFirebase } from './context/FirebaseContext';
+
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, isAuthReady } = useFirebase();
+
+  if (!isAuthReady) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+};
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/" element={<Layout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="master-data/*" element={<MasterData />} />
-          <Route path="work-orders/*" element={<WorkOrders />} />
-          <Route path="planning/*" element={<ProductionPlanning />} />
-          <Route path="workshop/*" element={<WorkshopExecution />} />
-          <Route path="quality/*" element={<QualityControl />} />
-          <Route path="inventory/*" element={<Inventory />} />
-          <Route path="overtime/*" element={<OverTime />} />
-          <Route path="reporting/*" element={<Reporting />} />
-          <Route path="settings/*" element={<Settings />} />
-        </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
+    <FirebaseProvider>
+      <WorkOrderProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/" element={
+              <ProtectedRoute>
+                <Layout />
+              </ProtectedRoute>
+            }>
+              <Route index element={<Dashboard />} />
+              <Route path="master-data/*" element={<MasterData />} />
+              <Route path="work-orders/*" element={<WorkOrders />} />
+              <Route path="planning/*" element={<ProductionPlanning />} />
+              <Route path="workshop/*" element={<WorkshopExecution />} />
+              <Route path="quality/*" element={<QualityControl />} />
+              <Route path="inventory/*" element={<Inventory />} />
+              <Route path="overtime/*" element={<OverTime />} />
+              <Route path="reporting/*" element={<Reporting />} />
+              <Route path="settings/*" element={<Settings />} />
+            </Route>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </WorkOrderProvider>
+    </FirebaseProvider>
   );
 }

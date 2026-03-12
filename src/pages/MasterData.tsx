@@ -52,16 +52,16 @@ const initialProducts = [
 // Processes
 const processesColumns: Column[] = [
   { header: 'Process ID', accessor: 'id' },
-  { header: 'Process Name', accessor: 'name' },
+  { header: 'Process Type', accessor: 'type' },
   { header: 'Description', accessor: 'description' },
   { header: 'Default Routing', accessor: 'routing' },
   { header: 'Compatible Products', accessor: 'products' },
 ];
 const initialProcesses = [
-  { id: 'PRC-01', name: 'Sand Casting', description: 'Traditional sand mold casting', routing: 'RT-01', products: 'Impellers, Plates' },
-  { id: 'PRC-02', name: 'Continuous Casting', description: 'Continuous casting for long products', routing: 'RT-02', products: 'Bars' },
-  { id: 'PRC-03', name: 'Centrifugal Casting (Vertical)', description: 'Vertical centrifugal casting', routing: 'RT-03', products: 'Bushings' },
-  { id: 'PRC-04', name: 'Stock Material', description: 'Raw material from stock', routing: 'RT-04', products: 'Bars, Plates' },
+  { id: 'PRC-01', type: 'Sand Casting', description: 'Traditional sand mold casting', routing: 'RT-01', products: 'Impellers, Plates' },
+  { id: 'PRC-02', type: 'Continuous Casting', description: 'Continuous casting for long products', routing: 'RT-02', products: 'Bars' },
+  { id: 'PRC-03', type: 'Centrifugal Casting (Vertical)', description: 'Vertical centrifugal casting', routing: 'RT-03', products: 'Bushings' },
+  { id: 'PRC-04', type: 'Stock Material', description: 'Raw material from stock', routing: 'RT-04', products: 'Bars, Plates' },
 ];
 
 // Status Types
@@ -222,6 +222,13 @@ export default function MasterData() {
   };
   const handleDeleteRouting = (index: number) => setRouting(routing.filter((_, i) => i !== index));
 
+  const dynamicRoutingColumns = routingColumns.map(col => {
+    if (col.accessor === 'process') {
+      return { ...col, options: processes.map(p => p.type) };
+    }
+    return col;
+  });
+
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
       <div>
@@ -248,13 +255,13 @@ export default function MasterData() {
       <div className="pt-2">
         <Routes>
           <Route path="/" element={<Navigate to="materials" replace />} />
-          <Route path="materials" element={<DataTable columns={materialsColumns} data={materials} onAdd={handleAddMaterial} onAddMultiple={handleAddMultipleMaterials} onEdit={handleEditMaterial} onDelete={handleDeleteMaterial} searchPlaceholder="Search Materials..." />} />
-          <Route path="products" element={<DataTable columns={productsColumns} data={products} onAdd={handleAddProduct} onAddMultiple={handleAddMultipleProducts} onEdit={handleEditProduct} onDelete={handleDeleteProduct} searchPlaceholder="Search Products..." />} />
-          <Route path="processes" element={<DataTable columns={processesColumns} data={processes} onAdd={handleAddProcess} onAddMultiple={handleAddMultipleProcesses} onEdit={handleEditProcess} onDelete={handleDeleteProcess} searchPlaceholder="Search Processes..." />} />
-          <Route path="status" element={<DataTable columns={statusColumns} data={status} onAdd={handleAddStatus} onAddMultiple={handleAddMultipleStatus} onEdit={handleEditStatus} onDelete={handleDeleteStatus} searchPlaceholder="Search Status Types..." />} />
-          <Route path="machines" element={<DataTable columns={machinesColumns} data={machines} onAdd={handleAddMachine} onAddMultiple={handleAddMultipleMachines} onEdit={handleEditMachine} onDelete={handleDeleteMachine} searchPlaceholder="Search Machines..." />} />
-          <Route path="molds" element={<DataTable columns={moldsColumns} data={molds} onAdd={handleAddMold} onAddMultiple={handleAddMultipleMolds} onEdit={handleEditMold} onDelete={handleDeleteMold} searchPlaceholder="Search Molds..." />} />
-          <Route path="routing" element={<DataTable columns={routingColumns} data={routing} onAdd={handleAddRouting} onAddMultiple={handleAddMultipleRouting} onEdit={handleEditRouting} onDelete={handleDeleteRouting} searchPlaceholder="Search Routing..." />} />
+          <Route path="materials" element={<DataTable columns={materialsColumns} data={materials} onAdd={handleAddMaterial} onAddMultiple={handleAddMultipleMaterials} onEdit={handleEditMaterial} onDelete={handleDeleteMaterial} searchPlaceholder="Search Materials..." exportFileName="Materials" />} />
+          <Route path="products" element={<DataTable columns={productsColumns} data={products} onAdd={handleAddProduct} onAddMultiple={handleAddMultipleProducts} onEdit={handleEditProduct} onDelete={handleDeleteProduct} searchPlaceholder="Search Products..." exportFileName="Products" />} />
+          <Route path="processes" element={<DataTable columns={processesColumns} data={processes} onAdd={handleAddProcess} onAddMultiple={handleAddMultipleProcesses} onEdit={handleEditProcess} onDelete={handleDeleteProcess} searchPlaceholder="Search Processes..." exportFileName="Processes" />} />
+          <Route path="status" element={<DataTable columns={statusColumns} data={status} onAdd={handleAddStatus} onAddMultiple={handleAddMultipleStatus} onEdit={handleEditStatus} onDelete={handleDeleteStatus} searchPlaceholder="Search Status Types..." exportFileName="Status Types" />} />
+          <Route path="machines" element={<DataTable columns={machinesColumns} data={machines} onAdd={handleAddMachine} onAddMultiple={handleAddMultipleMachines} onEdit={handleEditMachine} onDelete={handleDeleteMachine} searchPlaceholder="Search Machines..." exportFileName="Machines" />} />
+          <Route path="molds" element={<DataTable columns={moldsColumns} data={molds} onAdd={handleAddMold} onAddMultiple={handleAddMultipleMolds} onEdit={handleEditMold} onDelete={handleDeleteMold} searchPlaceholder="Search Molds..." exportFileName="Molds" />} />
+          <Route path="routing" element={<DataTable columns={dynamicRoutingColumns} data={routing} onAdd={handleAddRouting} onAddMultiple={handleAddMultipleRouting} onEdit={handleEditRouting} onDelete={handleDeleteRouting} searchPlaceholder="Search Routing..." exportFileName="Routing Master" />} />
           <Route path="workshops" element={<PlaceholderTab title="Workshops" />} />
           <Route path="operators" element={<PlaceholderTab title="Operators" />} />
           <Route path="rejections" element={<PlaceholderTab title="Rejection Reasons" />} />

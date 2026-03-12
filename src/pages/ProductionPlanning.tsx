@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { CalendarDays, Play, ArrowRight, ArrowLeft, RotateCcw } from 'lucide-react';
+import { useWorkOrders } from '../context/WorkOrderContext';
 
 const tabs = [
   { name: 'Work Order Execution', path: 'execution' },
@@ -11,31 +12,17 @@ const tabs = [
   { name: 'Gantt Chart', path: 'gantt' },
 ];
 
-const mockExecution = [
-  { 
-    id: 'WO-2026-001', 
-    name: 'Bronze Bushing C93200', 
-    stages: [
-      { name: 'Material Prep', status: 'completed' },
-      { name: 'Furnace Melting', status: 'completed' },
-      { name: 'Centrifugal Casting', status: 'current' },
-      { name: 'Cooling', status: 'pending' },
-      { name: 'Rough Machining', status: 'pending' },
-      { name: 'Final Machining', status: 'pending' },
-      { name: 'Inspection', status: 'pending' },
-    ]
-  },
-];
-
 function WorkOrderExecution() {
+  const { orders } = useWorkOrders();
+
   return (
     <div className="space-y-6">
-      {mockExecution.map((wo) => (
+      {orders.map((wo) => (
         <div key={wo.id} className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
           <div className="px-4 py-5 sm:px-6 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
             <div>
               <h3 className="text-lg leading-6 font-medium text-gray-900">{wo.id}</h3>
-              <p className="mt-1 max-w-2xl text-sm text-gray-500">{wo.name}</p>
+              <p className="mt-1 max-w-2xl text-sm text-gray-500">{wo.material} - {wo.process}</p>
             </div>
             <div className="flex gap-2">
               <button className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
@@ -52,9 +39,9 @@ function WorkOrderExecution() {
               </button>
             </div>
           </div>
-          <div className="px-4 py-5 sm:p-6">
-            <div className="flex items-center justify-between">
-              {wo.stages.map((stage, index) => (
+          <div className="px-4 py-5 sm:p-6 overflow-x-auto">
+            <div className="flex items-center justify-between min-w-max">
+              {wo.stages?.map((stage, index) => (
                 <React.Fragment key={stage.name}>
                   <div className="flex flex-col items-center">
                     <div className={cn(
@@ -74,7 +61,7 @@ function WorkOrderExecution() {
                   </div>
                   {index < wo.stages.length - 1 && (
                     <div className={cn(
-                      "flex-1 h-0.5 mx-2",
+                      "flex-1 h-0.5 mx-2 w-12",
                       stage.status === 'completed' ? "bg-green-500" : "bg-gray-200"
                     )} />
                   )}

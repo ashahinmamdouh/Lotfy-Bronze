@@ -1,0 +1,48 @@
+{
+  "entities": {
+    "WorkOrder": {
+      "title": "WorkOrder",
+      "description": "Represents a production work order",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "material": { "type": "string" },
+        "process": { "type": "string" },
+        "dimensions": { "type": "string" },
+        "qty": { "type": "number" },
+        "weight": { "type": "number" },
+        "stage": { "type": "string" },
+        "workshop": { "type": "string" },
+        "start": { "type": "string" },
+        "due": { "type": "string" },
+        "priority": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "actualWeight": { "type": "number" },
+        "deliveryDate": { "type": "string" },
+        "completionDate": { "type": "string" },
+        "qualityStatus": { "type": "string" },
+        "aptDate": { "type": "string" },
+        "productType": { "type": "string" },
+        "stages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "status": { "type": "string" }
+            }
+          }
+        },
+        "authorId": { "type": "string" }
+      },
+      "required": ["id", "material", "qty", "weight", "authorId"]
+    }
+  },
+  "firestore": {
+    "workOrders": {
+      "schema": { "$ref": "#/entities/WorkOrder" },
+      "description": "Collection of all work orders"
+    }
+  }
+}

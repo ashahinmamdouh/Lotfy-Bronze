@@ -1,0 +1,80 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: workOrders
+    // Document ID: Auto-generated or custom Work Order ID
+    // Fields:
+    //   - id: string
+    //   - material: string
+    //   - qty: number
+    //   - weight: number
+    //   - authorId: string (immutable)
+    //   - ... other optional fields
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.authorId;
+    }
+    
+    function uidUnchanged() {
+      return !('authorId' in request.resource.data) ||
+        request.resource.data.authorId == request.auth.uid;
+    }
+    
+    function uidNotModified() {
+      return !('authorId' in request.resource.data) ||
+        request.resource.data.authorId == resource.data.authorId;
+    }
+    
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+    
+    function isValidWorkOrder(data) {
+      return data.id is string && data.id.size() > 0 && data.id.size() < 100 &&
+             data.material is string && data.material.size() > 0 && data.material.size() < 100 &&
+             data.qty is number && data.qty > 0 &&
+             data.weight is number && data.weight >= 0 &&
+             data.authorId is string && data.authorId.size() > 0;
+    }
+
+    match /test/connection {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /workOrders/{orderId} {
+      allow read: if isAuthenticated();
+      
+      allow create: if isAuthenticated() && 
+                    hasRequiredFields(['id', 'material', 'qty', 'weight', 'authorId']) &&
+                    isValidWorkOrder(request.resource.data) &&
+                    uidUnchanged();
+                    
+      allow update: if isAuthenticated() && 
+                    isValidWorkOrder(request.resource.data) &&
+                    uidNotModified();
+                    
+      allow delete: if isDocOwner();
+    }
+  }
+}

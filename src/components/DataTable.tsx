@@ -6,19 +6,21 @@ export interface Column {
   header: string;
   accessor: string;
   render?: (value: any, item: any) => React.ReactNode;
+  options?: string[];
 }
 
 interface DataTableProps {
   columns: Column[];
   data: any[];
   searchPlaceholder?: string;
+  exportFileName?: string;
   onAdd?: (item: any) => void;
   onAddMultiple?: (items: any[]) => void;
   onEdit?: (item: any, index: number) => void;
   onDelete?: (index: number) => void;
 }
 
-export function DataTable({ columns, data, searchPlaceholder, onAdd, onAddMultiple, onEdit, onDelete }: DataTableProps) {
+export function DataTable({ columns, data, searchPlaceholder, exportFileName = "Data", onAdd, onAddMultiple, onEdit, onDelete }: DataTableProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [formData, setFormData] = useState<any>({});
@@ -57,7 +59,7 @@ export function DataTable({ columns, data, searchPlaceholder, onAdd, onAddMultip
 
   const handleExport = () => {
     if (data.length === 0) {
-      alert("No data to export");
+      console.warn("No data to export");
       return;
     }
 
@@ -71,8 +73,12 @@ export function DataTable({ columns, data, searchPlaceholder, onAdd, onAddMultip
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Data");
-    XLSX.writeFile(workbook, "export.xlsx");
+    
+    // Ensure sheet name is valid (max 31 chars, no special chars)
+    const safeSheetName = exportFileName.substring(0, 31).replace(/[\\/?*[\]]/g, '');
+    
+    XLSX.utils.book_append_sheet(workbook, worksheet, safeSheetName);
+    XLSX.writeFile(workbook, `${exportFileName.toLowerCase().replace(/\s+/g, '_')}.xlsx`);
   };
 
   const handleUploadClick = () => {
@@ -238,12 +244,25 @@ export function DataTable({ columns, data, searchPlaceholder, onAdd, onAddMultip
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     {col.header}
                   </label>
-                  <input
-                    type="text"
-                    value={formData[col.accessor] || ''}
-                    onChange={(e) => handleChange(col.accessor, e.target.value)}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-none shadow-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black sm:text-sm"
-                  />
+                  {col.options ? (
+                    <select
+                      value={formData[col.accessor] || ''}
+                      onChange={(e) => handleChange(col.accessor, e.target.value)}
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-none shadow-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black sm:text-sm"
+                    >
+                      <option value="">Select {col.header}</option>
+                      {col.options.map((opt, i) => (
+                        <option key={i} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      value={formData[col.accessor] || ''}
+                      onChange={(e) => handleChange(col.accessor, e.target.value)}
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-none shadow-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black sm:text-sm"
+                    />
+                  )}
                 </div>
               ))}
             </div>

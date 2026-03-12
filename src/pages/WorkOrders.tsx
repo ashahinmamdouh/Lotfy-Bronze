@@ -1,28 +1,35 @@
 import React, { useState } from 'react';
-import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
+import { Routes, Route, NavLink, Navigate, useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
-import { Plus, Search, Download, Upload, Edit, Trash2, FileText } from 'lucide-react';
+import { Plus, Search, Download, Upload, Edit, Trash2, FileText, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { useWorkOrders } from '../context/WorkOrderContext';
 
 const tabs = [
-  { name: 'Open Work Orders', path: 'open' },
   { name: 'Create Work Order', path: 'create' },
+  { name: 'Open Work Orders', path: 'open' },
   { name: 'Work Order History', path: 'history' },
 ];
 
-const mockOrders = [
-  { id: 'WO-2026-001', material: 'BRZ-01', process: 'Sand Casting', dimensions: 'OD: 120, ID: 80, L: 500', qty: 10, weight: 150.5, stage: 'Furnace Melting', workshop: 'Foundry A', start: '2026-03-10', due: '2026-03-15', priority: 'High', status: 'In Production' },
-  { id: 'WO-2026-002', material: 'BRZ-02', process: 'Centrifugal Casting', dimensions: 'OD: 200, ID: 150, L: 1000', qty: 5, weight: 220.0, stage: 'Waiting Material', workshop: 'Foundry B', start: '2026-03-12', due: '2026-03-20', priority: 'Normal', status: 'Planned' },
-];
+function OpenOrdersList({ orders }: { orders: any[] }) {
+  const [searchId, setSearchId] = useState('');
+  const [searchMaterial, setSearchMaterial] = useState('');
+  const [searchStatus, setSearchStatus] = useState('');
 
-function OpenOrdersList() {
+  const filteredOrders = orders.filter(order => {
+    const matchId = order.id.toLowerCase().includes(searchId.toLowerCase());
+    const matchMaterial = order.material.toLowerCase().includes(searchMaterial.toLowerCase());
+    const matchStatus = searchStatus === '' || order.status === searchStatus;
+    return matchId && matchMaterial && matchStatus;
+  });
+
   const handleExport = () => {
-    if (mockOrders.length === 0) {
-      alert("No data to export");
+    if (filteredOrders.length === 0) {
+      console.warn("No data to export");
       return;
     }
 
-    const worksheet = XLSX.utils.json_to_sheet(mockOrders);
+    const worksheet = XLSX.utils.json_to_sheet(filteredOrders);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Work Orders");
     XLSX.writeFile(workbook, "work_orders.xlsx");
@@ -30,16 +37,43 @@ function OpenOrdersList() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <div className="relative w-64">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search className="h-4 w-4 text-gray-400" />
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex flex-col sm:flex-row gap-4 flex-1">
+          <div className="relative w-full sm:w-64">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-4 w-4 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              value={searchId}
+              onChange={(e) => setSearchId(e.target.value)}
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              placeholder="Search WO No..."
+            />
           </div>
-          <input
-            type="text"
-            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            placeholder="Search orders..."
-          />
+          <div className="relative w-full sm:w-64">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-4 w-4 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              value={searchMaterial}
+              onChange={(e) => setSearchMaterial(e.target.value)}
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              placeholder="Search Material..."
+            />
+          </div>
+          <select
+            value={searchStatus}
+            onChange={(e) => setSearchStatus(e.target.value)}
+            className="block w-full sm:w-48 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+          >
+            <option value="">All Statuses</option>
+            <option value="Planned">Planned</option>
+            <option value="In Production">In Production</option>
+            <option value="Completed">Completed</option>
+            <option value="Canceled">Canceled</option>
+          </select>
         </div>
         <div className="flex gap-2">
           <button 
@@ -70,7 +104,7 @@ function OpenOrdersList() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {mockOrders.map((order) => (
+                  {filteredOrders.map((order) => (
                     <tr key={order.id}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-indigo-600">{order.id}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.material}</td>
@@ -103,125 +137,612 @@ function OpenOrdersList() {
   );
 }
 
-function CreateWorkOrder() {
+function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => void }) {
+  const navigate = useNavigate();
+  const [header, setHeader] = useState({
+    workOrderNo: '',
+    priority: '1 - Normal',
+    startDate: '',
+    atpDate: '',
+    dueDate: '',
+  });
+
+  const [lines, setLines] = useState([{
+    id: crypto.randomUUID(),
+    product: 'Bars',
+    material: 'BRZ-01 (Bronze C93200)',
+    processType: 'Continuous Casting',
+    routing: 'Standard Routing',
+    od: '',
+    innerId: '',
+    length: '',
+    quantity: '1',
+    mold: '',
+    approxWeight: '',
+    dimensionNotes: '',
+    commentNotes: '',
+  }]);
+
+  const handleHeaderChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setHeader({ ...header, [e.target.name]: e.target.value });
+  };
+
+  const handleLineChange = (id: string, field: string, value: string) => {
+    setLines(lines.map(line => line.id === id ? { ...line, [field]: value } : line));
+  };
+
+  const addLine = () => {
+    setLines([...lines, {
+      id: crypto.randomUUID(),
+      product: 'Bars',
+      material: 'BRZ-01 (Bronze C93200)',
+      processType: 'Continuous Casting',
+      routing: 'Standard Routing',
+      od: '',
+      innerId: '',
+      length: '',
+      quantity: '1',
+      mold: '',
+      approxWeight: '',
+      dimensionNotes: '',
+      commentNotes: '',
+    }]);
+  };
+
+  const removeLine = (id: string) => {
+    if (lines.length > 1) {
+      setLines(lines.filter(line => line.id !== id));
+    }
+  };
+
+  const calculateWeight = (line: any) => {
+    const density = 0.0000088; // kg/mm³ for Bronze
+    let volume = 0;
+    
+    const od = Number(line.od) || 0;
+    const id = Number(line.innerId) || 0;
+    const length = Number(line.length) || 0;
+    const qty = Number(line.quantity) || 1;
+    const approxWeight = Number(line.approxWeight) || 0;
+    
+    if (line.product === 'Bushings' || id > 0) {
+      volume = Math.PI * (Math.pow(od / 2, 2) - Math.pow(id / 2, 2)) * length;
+    } else {
+      volume = Math.PI * Math.pow(od / 2, 2) * length;
+    }
+    
+    if (volume < 0) volume = 0;
+    
+    const unitWeight = volume * density;
+    const totalWeight = unitWeight * qty;
+    const rawMaterialReq = totalWeight * 1.15; // +15%
+    
+    const weightBasedOnMold = approxWeight * qty;
+    
+    return {
+      unitWeight: unitWeight.toFixed(2),
+      totalWeight: totalWeight.toFixed(2),
+      rawMaterialReq: rawMaterialReq.toFixed(2),
+      weightBasedOnMold: weightBasedOnMold.toFixed(2),
+      hasMold: !!line.mold && line.mold.trim() !== ''
+    };
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const newOrders = lines.map((line, index) => {
+      const weights = calculateWeight(line);
+      const woId = header.workOrderNo || `WO-2026-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}-${index + 1}`;
+      
+      let dimensions = `OD: ${line.od || 0}`;
+      if (line.innerId) dimensions += `, ID: ${line.innerId}`;
+      if (line.length) dimensions += `, L: ${line.length}`;
+      
+      const finalWeight = weights.hasMold ? Number(weights.weightBasedOnMold) : Number(weights.totalWeight);
+      
+      return {
+        id: woId,
+        material: line.material.split(' ')[0], // Get just the code part
+        process: line.processType,
+        dimensions: dimensions,
+        qty: Number(line.quantity) || 1,
+        weight: finalWeight,
+        stage: 'Planned',
+        workshop: 'Foundry A',
+        start: header.startDate || new Date().toISOString().split('T')[0],
+        due: header.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        priority: header.priority.split(' - ')[1] || 'Normal',
+        status: 'Planned'
+      };
+    });
+
+    try {
+      await onAddOrder(newOrders);
+      navigate('/work-orders/open');
+    } catch (error) {
+      console.error("Failed to add orders", error);
+    }
+  };
+
   return (
-    <div className="max-w-3xl mx-auto">
-      <form className="space-y-8 divide-y divide-gray-200">
-        <div className="space-y-8 divide-y divide-gray-200">
-          <div>
+    <div className="max-w-5xl mx-auto pb-12">
+      <form className="space-y-8" onSubmit={handleSubmit}>
+        {/* Order Header Section */}
+        <div className="bg-[#FAF9F6] p-8 border border-gray-200 shadow-sm">
+          <h2 className="text-3xl font-serif italic text-gray-900 mb-6 border-b border-gray-200 pb-4">Order Header</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <h3 className="text-lg leading-6 font-medium text-gray-900">Create New Work Order</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Enter the details for the new production order. Weight will be calculated automatically based on dimensions and material density.
-              </p>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Work Order No</label>
+              <input 
+                type="text" 
+                name="workOrderNo"
+                value={header.workOrderNo}
+                onChange={handleHeaderChange}
+                placeholder="Auto-generated if empty" 
+                className="w-full border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900"
+              />
             </div>
-
-            <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
-              <div className="sm:col-span-3">
-                <label htmlFor="product" className="block text-sm font-medium text-gray-700">Product Type</label>
-                <div className="mt-1">
-                  <select id="product" name="product" className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
-                    <option>Bars</option>
-                    <option>Bushings</option>
-                    <option>Plates</option>
-                    <option>Impellers</option>
-                    <option>Custom</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="sm:col-span-3">
-                <label htmlFor="material" className="block text-sm font-medium text-gray-700">Material</label>
-                <div className="mt-1">
-                  <select id="material" name="material" className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
-                    <option>BRZ-01 (Bronze C93200)</option>
-                    <option>BRZ-02 (Aluminum Bronze C95400)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="sm:col-span-2">
-                <label htmlFor="od" className="block text-sm font-medium text-gray-700">Outer Diameter (mm)</label>
-                <div className="mt-1">
-                  <input type="number" name="od" id="od" className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md" />
-                </div>
-              </div>
-
-              <div className="sm:col-span-2">
-                <label htmlFor="id" className="block text-sm font-medium text-gray-700">Inner Diameter (mm)</label>
-                <div className="mt-1">
-                  <input type="number" name="id" id="id" className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md" />
-                </div>
-              </div>
-
-              <div className="sm:col-span-2">
-                <label htmlFor="length" className="block text-sm font-medium text-gray-700">Length (mm)</label>
-                <div className="mt-1">
-                  <input type="number" name="length" id="length" className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md" />
-                </div>
-              </div>
-
-              <div className="sm:col-span-2">
-                <label htmlFor="qty" className="block text-sm font-medium text-gray-700">Quantity</label>
-                <div className="mt-1">
-                  <input type="number" name="qty" id="qty" defaultValue={1} className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md" />
-                </div>
-              </div>
-
-              <div className="sm:col-span-2">
-                <label htmlFor="weight" className="block text-sm font-medium text-gray-700">Calculated Weight (kg)</label>
-                <div className="mt-1">
-                  <input type="text" name="weight" id="weight" disabled readOnly className="bg-gray-50 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md" />
-                </div>
-              </div>
-
-              <div className="sm:col-span-2">
-                <label htmlFor="priority" className="block text-sm font-medium text-gray-700">Priority</label>
-                <div className="mt-1">
-                  <select id="priority" name="priority" className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
-                    <option>Normal</option>
-                    <option>High</option>
-                    <option>Urgent</option>
-                  </select>
-                </div>
-              </div>
-              
-              <div className="sm:col-span-6">
-                <label htmlFor="notes" className="block text-sm font-medium text-gray-700">Notes / Comments</label>
-                <div className="mt-1">
-                  <textarea id="notes" name="notes" rows={3} className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border border-gray-300 rounded-md"></textarea>
-                </div>
-              </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Priority</label>
+              <select 
+                name="priority"
+                value={header.priority}
+                onChange={handleHeaderChange}
+                className="w-full border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 bg-white"
+              >
+                <option>1 - Normal</option>
+                <option>2 - High</option>
+                <option>3 - Urgent</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Start Date</label>
+              <input 
+                type="date" 
+                name="startDate"
+                value={header.startDate}
+                onChange={handleHeaderChange}
+                className="w-full border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">ATP Date</label>
+              <input 
+                type="date" 
+                name="atpDate"
+                value={header.atpDate}
+                onChange={handleHeaderChange}
+                className="w-full border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Due Date</label>
+              <input 
+                type="date" 
+                name="dueDate"
+                value={header.dueDate}
+                onChange={handleHeaderChange}
+                className="w-full border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900"
+              />
             </div>
           </div>
         </div>
 
-        <div className="pt-5">
-          <div className="flex justify-end">
-            <button type="button" className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-              Cancel
-            </button>
-            <button type="submit" className="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-              Save Work Order
-            </button>
+        {/* Order Lines Section */}
+        <div className="bg-[#FAF9F6] p-8 border border-gray-200 shadow-sm">
+          <div className="flex justify-between items-center mb-6 border-b border-gray-200 pb-4">
+            <h2 className="text-3xl font-serif italic text-gray-900">Order Lines</h2>
+            <div className="flex gap-3">
+              <button type="button" className="flex items-center gap-2 px-4 py-2 border border-gray-900 text-sm font-bold tracking-wider uppercase hover:bg-gray-100 transition-colors">
+                <Download className="w-4 h-4" /> Template
+              </button>
+              <button type="button" className="flex items-center gap-2 px-4 py-2 border border-gray-900 text-sm font-bold tracking-wider uppercase hover:bg-gray-100 transition-colors">
+                <Upload className="w-4 h-4" /> Upload Excel
+              </button>
+              <button type="button" onClick={addLine} className="flex items-center gap-2 px-4 py-2 bg-[#141414] text-white text-sm font-bold tracking-wider uppercase hover:bg-black transition-colors">
+                <Plus className="w-4 h-4" /> Add Line
+              </button>
+            </div>
           </div>
+
+          <div className="space-y-8">
+            {lines.map((line, index) => {
+              const weights = calculateWeight(line);
+              
+              return (
+                <div key={line.id} className="bg-white border border-gray-200 shadow-sm relative">
+                  {lines.length > 1 && (
+                    <button 
+                      type="button" 
+                      onClick={() => removeLine(line.id)}
+                      className="absolute -right-3 -top-3 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 shadow-md z-10"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                  
+                  <div className="p-6 space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Product</label>
+                        <select 
+                          value={line.product}
+                          onChange={(e) => handleLineChange(line.id, 'product', e.target.value)}
+                          className="w-full border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 bg-white"
+                        >
+                          <option>Bars</option>
+                          <option>Bushings</option>
+                          <option>Plates</option>
+                          <option>Custom</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Material</label>
+                        <select 
+                          value={line.material}
+                          onChange={(e) => handleLineChange(line.id, 'material', e.target.value)}
+                          className="w-full border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 bg-white"
+                        >
+                          <option>BRZ-01 (Bronze C93200)</option>
+                          <option>BRZ-02 (Alum Bronze)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Process Type</label>
+                        <select 
+                          value={line.processType}
+                          onChange={(e) => handleLineChange(line.id, 'processType', e.target.value)}
+                          className="w-full border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 bg-white"
+                        >
+                          <option>Continuous Casting</option>
+                          <option>Sand Casting</option>
+                          <option>Centrifugal</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Routing</label>
+                        <select 
+                          value={line.routing}
+                          onChange={(e) => handleLineChange(line.id, 'routing', e.target.value)}
+                          className="w-full border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 bg-white"
+                        >
+                          <option>Standard Routing</option>
+                          <option>Custom Routing A</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-6 p-4 bg-gray-50 border border-gray-100">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">OD (MM)</label>
+                        <input 
+                          type="number" 
+                          value={line.od}
+                          onChange={(e) => handleLineChange(line.id, 'od', e.target.value)}
+                          className="w-full border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">ID (MM)</label>
+                        <input 
+                          type="number" 
+                          value={line.innerId}
+                          onChange={(e) => handleLineChange(line.id, 'innerId', e.target.value)}
+                          className="w-full border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Length (MM)</label>
+                        <input 
+                          type="number" 
+                          value={line.length}
+                          onChange={(e) => handleLineChange(line.id, 'length', e.target.value)}
+                          className="w-full border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Quantity</label>
+                        <input 
+                          type="number" 
+                          value={line.quantity}
+                          onChange={(e) => handleLineChange(line.id, 'quantity', e.target.value)}
+                          className="w-full border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Mold #</label>
+                        <input 
+                          type="text" 
+                          value={line.mold}
+                          onChange={(e) => handleLineChange(line.id, 'mold', e.target.value)}
+                          className="w-full border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Dimension Notes</label>
+                        <input 
+                          type="text" 
+                          value={line.dimensionNotes}
+                          onChange={(e) => handleLineChange(line.id, 'dimensionNotes', e.target.value)}
+                          className="w-full border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Comment Notes</label>
+                        <input 
+                          type="text" 
+                          value={line.commentNotes}
+                          onChange={(e) => handleLineChange(line.id, 'commentNotes', e.target.value)}
+                          className="w-full border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Weight <span className="text-red-500">*</span></label>
+                        <input 
+                          type="number" 
+                          required
+                          value={line.approxWeight}
+                          onChange={(e) => handleLineChange(line.id, 'approxWeight', e.target.value)}
+                          className="w-full border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Weight Footer */}
+                  <div className="bg-[#141414] text-white p-6 flex flex-wrap gap-12 items-center">
+                    <div>
+                      <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Unit Weight</div>
+                      <div className="text-xl font-mono font-bold">{weights.unitWeight} KG</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Total Weight</div>
+                      <div className="text-xl font-mono font-bold">{weights.totalWeight} KG</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Raw Material Req (+15%)</div>
+                      <div className="text-xl font-mono font-bold text-[#F27D26]">{weights.rawMaterialReq} KG</div>
+                    </div>
+                    {weights.hasMold && (
+                      <div>
+                        <div className="text-[10px] font-bold text-[#F27D26] uppercase tracking-wider mb-1">Weight Based on Mold</div>
+                        <div className="text-xl font-mono font-bold text-[#F27D26]">{weights.weightBasedOnMold} KG</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-4 pt-4">
+          <button 
+            type="button" 
+            onClick={() => navigate('/work-orders/open')}
+            className="px-6 py-3 border border-gray-300 text-sm font-bold tracking-wider uppercase hover:bg-gray-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button 
+            type="submit" 
+            className="px-6 py-3 bg-[#141414] text-white text-sm font-bold tracking-wider uppercase hover:bg-black transition-colors"
+          >
+            Save Work Order
+          </button>
         </div>
       </form>
     </div>
   );
 }
 
-function PlaceholderTab({ title }: { title: string }) {
+function WorkOrderHistory({ orders }: { orders: any[] }) {
+  const [searchId, setSearchId] = useState('');
+  const [searchMaterial, setSearchMaterial] = useState('');
+  const [searchStatus, setSearchStatus] = useState('');
+
+  const filteredOrders = orders.filter(order => {
+    const matchId = order.id.toLowerCase().includes(searchId.toLowerCase());
+    const matchMaterial = order.material.toLowerCase().includes(searchMaterial.toLowerCase());
+    const matchStatus = searchStatus === '' || order.status === searchStatus;
+    return matchId && matchMaterial && matchStatus;
+  });
+
+  const calculateDays = (start: string, completionDate?: string, status?: string) => {
+    if (status === 'Canceled') return '-';
+    const startDate = new Date(start);
+    const endDate = completionDate ? new Date(completionDate) : new Date();
+    const diffTime = endDate.getTime() - startDate.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays >= 0 ? diffDays : 0;
+  };
+
+  const calculateDelay = (due: string, deliveryDate?: string, status?: string) => {
+    if (status === 'Canceled') return '-';
+    const dueDate = new Date(due);
+    if (!deliveryDate) {
+      const today = new Date();
+      if (today > dueDate) {
+        const diffTime = today.getTime() - dueDate.getTime();
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      }
+      return 0;
+    } else {
+      const delDate = new Date(deliveryDate);
+      if (delDate > dueDate) {
+        const diffTime = delDate.getTime() - dueDate.getTime();
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      }
+      return 0;
+    }
+  };
+
+  const handleExport = () => {
+    if (filteredOrders.length === 0) {
+      console.warn("No data to export");
+      return;
+    }
+
+    const exportData = filteredOrders.map(order => ({
+      'Creation Date': order.createdAt || order.start,
+      'Work Order Number': order.id,
+      'Product Type': order.productType || '-',
+      'Start Date': order.start,
+      'Due Date': order.due,
+      'Apt Date': order.aptDate || '-',
+      'Dimensions': order.dimensions,
+      'Quantity': order.qty,
+      'Expected Weight': order.weight,
+      'Actual Produced Weight': order.actualWeight || '-',
+      'Delivery Date': order.deliveryDate || '-',
+      'Completion Date': order.completionDate || '-',
+      'Quality Approval Status': order.qualityStatus || '-',
+      'Final Process Used': order.process,
+      'Stage': order.stage,
+      'No of Days': calculateDays(order.start, order.completionDate, order.status),
+      'Delay Days': calculateDelay(order.due, order.deliveryDate, order.status)
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Work Order History");
+    XLSX.writeFile(workbook, "work_order_history.xlsx");
+  };
+
   return (
-    <div className="py-12 text-center">
-      <FileText className="mx-auto h-12 w-12 text-gray-400" />
-      <h3 className="mt-2 text-sm font-medium text-gray-900">{title}</h3>
-      <p className="mt-1 text-sm text-gray-500">This module is under construction.</p>
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex flex-col sm:flex-row gap-4 flex-1">
+          <div className="relative w-full sm:w-64">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-4 w-4 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              value={searchId}
+              onChange={(e) => setSearchId(e.target.value)}
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              placeholder="Search WO No..."
+            />
+          </div>
+          <div className="relative w-full sm:w-64">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-4 w-4 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              value={searchMaterial}
+              onChange={(e) => setSearchMaterial(e.target.value)}
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              placeholder="Search Material..."
+            />
+          </div>
+          <select
+            value={searchStatus}
+            onChange={(e) => setSearchStatus(e.target.value)}
+            className="block w-full sm:w-48 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+          >
+            <option value="">All Statuses</option>
+            <option value="Planned">Planned</option>
+            <option value="In Production">In Production</option>
+            <option value="Completed">Completed</option>
+            <option value="Canceled">Canceled</option>
+          </select>
+        </div>
+        <div className="flex gap-2">
+          <button 
+            onClick={handleExport}
+            className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </button>
+        </div>
+      </div>
+
+      <div className="flex flex-col">
+        <div className="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+          <div className="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
+            <div className="shadow overflow-hidden border-b border-gray-200 sm:rounded-lg">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Creation Date</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">WO No</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product Type</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Date</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Apt Date</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dimensions</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expected Wt</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actual Wt</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Delivery Date</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Completion Date</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quality Status</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Final Process</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stage</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No of Days</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Delay Days</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredOrders.map((order) => {
+                    const delayDays = calculateDelay(order.due, order.deliveryDate, order.status);
+                    return (
+                      <tr key={order.id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.createdAt || order.start}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-indigo-600">{order.id}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.productType || '-'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.start}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.due}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.aptDate || '-'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.dimensions}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.qty}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.weight}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.actualWeight || '-'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.deliveryDate || '-'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.completionDate || '-'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <span className={cn(
+                            "px-2 inline-flex text-xs leading-5 font-semibold rounded-full",
+                            order.qualityStatus === 'Approved' ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
+                          )}>
+                            {order.qualityStatus || 'Pending'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.process}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.stage}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{calculateDays(order.start, order.completionDate, order.status)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <span className={cn(
+                            "px-2 inline-flex text-xs leading-5 font-semibold rounded-full",
+                            delayDays > 0 ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"
+                          )}>
+                            {delayDays}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
 export default function WorkOrders() {
+  const { orders, addOrders } = useWorkOrders();
+
   return (
     <div className="space-y-6">
       <div>
@@ -253,10 +774,10 @@ export default function WorkOrders() {
 
         <div className="p-6">
           <Routes>
-            <Route path="/" element={<Navigate to="open" replace />} />
-            <Route path="open" element={<OpenOrdersList />} />
-            <Route path="create" element={<CreateWorkOrder />} />
-            <Route path="history" element={<PlaceholderTab title="Work Order History" />} />
+            <Route path="/" element={<Navigate to="create" replace />} />
+            <Route path="open" element={<OpenOrdersList orders={orders} />} />
+            <Route path="create" element={<CreateWorkOrder onAddOrder={addOrders} />} />
+            <Route path="history" element={<WorkOrderHistory orders={orders} />} />
           </Routes>
         </div>
       </div>
