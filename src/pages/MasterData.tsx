@@ -100,7 +100,7 @@ const machinesColumns: Column[] = [
   { header: 'Machine Type', accessor: 'type' },
   { header: 'Production Rate', accessor: 'rate' },
   { header: 'Capacity Limits', accessor: 'capacity' },
-  { header: 'Operator Name', accessor: 'operator' },
+  { header: 'Default Operator Name', accessor: 'operator' },
   { header: 'Setup Time', accessor: 'setup' },
   { header: 'Changeover Time', accessor: 'changeover' },
   { header: 'Maintenance Interval', accessor: 'maintenance' },
@@ -108,6 +108,17 @@ const machinesColumns: Column[] = [
 ];
 const initialMachines = [
   { id: 'MAC-01', workshop: 'Foundry', name: 'Induction Furnace A', number: 'F-01', type: 'Furnace', rate: '500 kg/hr', capacity: '1000 kg', operator: 'Ahmed', setup: '30 min', changeover: '60 min', maintenance: 'Weekly', status: 'Running' },
+];
+
+// Operators
+const operatorsColumns: Column[] = [
+  { header: 'Operator ID', accessor: 'id' },
+  { header: 'Operator Name', accessor: 'name' },
+  { header: 'Workshop', accessor: 'workshop' },
+];
+const initialOperators = [
+  { id: 'OP-01', name: 'Ahmed', workshop: 'Foundry' },
+  { id: 'OP-02', name: 'Mohamed', workshop: 'Machining' },
 ];
 
 // Molds
@@ -160,6 +171,7 @@ export default function MasterData() {
   const [processes, setProcesses] = useState(initialProcesses);
   const [status, setStatus] = useState(initialStatus);
   const [workshops, setWorkshops] = useState(initialWorkshops);
+  const [operators, setOperators] = useState(initialOperators);
   const [machines, setMachines] = useState(initialMachines);
   const [molds, setMolds] = useState(initialMolds);
   const [routing, setRouting] = useState(initialRouting);
@@ -214,6 +226,16 @@ export default function MasterData() {
   };
   const handleDeleteWorkshop = (index: number) => setWorkshops(workshops.filter((_, i) => i !== index));
 
+  // Operators
+  const handleAddOperator = (item: any) => setOperators([...operators, item]);
+  const handleAddMultipleOperators = (items: any[]) => setOperators([...operators, ...items]);
+  const handleEditOperator = (item: any, index: number) => {
+    const newData = [...operators];
+    newData[index] = item;
+    setOperators(newData);
+  };
+  const handleDeleteOperator = (index: number) => setOperators(operators.filter((_, i) => i !== index));
+
   // Machines
   const handleAddMachine = (item: any) => setMachines([...machines, item]);
   const handleAddMultipleMachines = (items: any[]) => setMachines([...machines, ...items]);
@@ -255,6 +277,16 @@ export default function MasterData() {
     if (col.accessor === 'workshop') {
       return { ...col, options: workshops.map(w => w.name) };
     }
+    if (col.accessor === 'operator') {
+      return { ...col, options: operators.map(o => o.name) };
+    }
+    return col;
+  });
+
+  const dynamicOperatorsColumns = operatorsColumns.map(col => {
+    if (col.accessor === 'workshop') {
+      return { ...col, options: workshops.map(w => w.name) };
+    }
     return col;
   });
 
@@ -289,10 +321,10 @@ export default function MasterData() {
           <Route path="processes" element={<DataTable columns={processesColumns} data={processes} onAdd={handleAddProcess} onAddMultiple={handleAddMultipleProcesses} onEdit={handleEditProcess} onDelete={handleDeleteProcess} searchPlaceholder="Search Processes..." exportFileName="Processes" />} />
           <Route path="status" element={<DataTable columns={statusColumns} data={status} onAdd={handleAddStatus} onAddMultiple={handleAddMultipleStatus} onEdit={handleEditStatus} onDelete={handleDeleteStatus} searchPlaceholder="Search Status Types..." exportFileName="Status Types" />} />
           <Route path="workshops" element={<DataTable columns={workshopsColumns} data={workshops} onAdd={handleAddWorkshop} onAddMultiple={handleAddMultipleWorkshops} onEdit={handleEditWorkshop} onDelete={handleDeleteWorkshop} searchPlaceholder="Search Workshops..." exportFileName="Workshops" />} />
+          <Route path="operators" element={<DataTable columns={dynamicOperatorsColumns} data={operators} onAdd={handleAddOperator} onAddMultiple={handleAddMultipleOperators} onEdit={handleEditOperator} onDelete={handleDeleteOperator} searchPlaceholder="Search Operators..." exportFileName="Operators" />} />
           <Route path="machines" element={<DataTable columns={dynamicMachinesColumns} data={machines} onAdd={handleAddMachine} onAddMultiple={handleAddMultipleMachines} onEdit={handleEditMachine} onDelete={handleDeleteMachine} searchPlaceholder="Search Machines..." exportFileName="Machines" />} />
           <Route path="molds" element={<DataTable columns={moldsColumns} data={molds} onAdd={handleAddMold} onAddMultiple={handleAddMultipleMolds} onEdit={handleEditMold} onDelete={handleDeleteMold} searchPlaceholder="Search Molds..." exportFileName="Molds" />} />
           <Route path="routing" element={<DataTable columns={dynamicRoutingColumns} data={routing} onAdd={handleAddRouting} onAddMultiple={handleAddMultipleRouting} onEdit={handleEditRouting} onDelete={handleDeleteRouting} searchPlaceholder="Search Routing..." exportFileName="Routing Master" />} />
-          <Route path="operators" element={<PlaceholderTab title="Operators" />} />
           <Route path="rejections" element={<PlaceholderTab title="Rejection Reasons" />} />
         </Routes>
       </div>
