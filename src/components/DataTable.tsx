@@ -139,8 +139,8 @@ export function DataTable({ columns, data, searchPlaceholder, exportFileName = "
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div className="relative w-96">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="relative w-full sm:w-96">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Search className="h-4 w-4 text-gray-400" />
           </div>
@@ -150,7 +150,7 @@ export function DataTable({ columns, data, searchPlaceholder, exportFileName = "
             placeholder={searchPlaceholder || "Search..."}
           />
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row flex-wrap gap-3 w-full sm:w-auto">
           <input 
             type="file" 
             accept=".xlsx, .xls" 
@@ -160,21 +160,21 @@ export function DataTable({ columns, data, searchPlaceholder, exportFileName = "
           />
           <button 
             onClick={handleUploadClick}
-            className="inline-flex items-center px-4 py-2.5 border border-gray-300 text-sm font-bold tracking-wider uppercase text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black transition-colors"
+            className="w-full sm:w-auto inline-flex justify-center items-center px-4 py-2.5 border border-gray-300 text-sm font-bold tracking-wider uppercase text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black transition-colors"
           >
             <Upload className="h-4 w-4 mr-2" />
             Upload
           </button>
           <button 
             onClick={handleExport}
-            className="inline-flex items-center px-4 py-2.5 border border-gray-300 text-sm font-bold tracking-wider uppercase text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black transition-colors"
+            className="w-full sm:w-auto inline-flex justify-center items-center px-4 py-2.5 border border-gray-300 text-sm font-bold tracking-wider uppercase text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black transition-colors"
           >
             <Download className="h-4 w-4 mr-2" />
             Export
           </button>
           <button 
             onClick={handleOpenAdd}
-            className="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-bold tracking-wider uppercase text-white bg-[#f27d26] hover:bg-[#e06b15] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#f27d26] transition-colors"
+            className="w-full sm:w-auto inline-flex justify-center items-center px-4 py-2.5 border border-transparent text-sm font-bold tracking-wider uppercase text-white bg-[#f27d26] hover:bg-[#e06b15] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#f27d26] transition-colors"
           >
             <Plus className="h-4 w-4 mr-2" />
             Add New

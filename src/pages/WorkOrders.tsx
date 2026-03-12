@@ -38,7 +38,7 @@ function OpenOrdersList({ orders }: { orders: any[] }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex flex-col sm:flex-row gap-4 flex-1">
+        <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto flex-1">
           <div className="relative w-full sm:w-64">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search className="h-4 w-4 text-gray-400" />
@@ -66,7 +66,7 @@ function OpenOrdersList({ orders }: { orders: any[] }) {
           <select
             value={searchStatus}
             onChange={(e) => setSearchStatus(e.target.value)}
-            className="block w-full sm:w-48 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+            className="block w-full sm:w-48 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md bg-white"
           >
             <option value="">All Statuses</option>
             <option value="Planned">Planned</option>
@@ -75,10 +75,10 @@ function OpenOrdersList({ orders }: { orders: any[] }) {
             <option value="Canceled">Canceled</option>
           </select>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 w-full sm:w-auto">
           <button 
             onClick={handleExport}
-            className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            className="w-full sm:w-auto inline-flex justify-center items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
             <Download className="h-4 w-4 mr-2" />
             Export
@@ -269,8 +269,8 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => void }
     <div className="max-w-5xl mx-auto pb-12">
       <form className="space-y-8" onSubmit={handleSubmit}>
         {/* Order Header Section */}
-        <div className="bg-[#FAF9F6] p-8 border border-gray-200 shadow-sm">
-          <h2 className="text-3xl font-serif italic text-gray-900 mb-6 border-b border-gray-200 pb-4">Order Header</h2>
+        <div className="bg-[#FAF9F6] p-4 sm:p-8 border border-gray-200 shadow-sm">
+          <h2 className="text-2xl sm:text-3xl font-serif italic text-gray-900 mb-6 border-b border-gray-200 pb-4">Order Header</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
@@ -331,17 +331,17 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => void }
         </div>
 
         {/* Order Lines Section */}
-        <div className="bg-[#FAF9F6] p-8 border border-gray-200 shadow-sm">
-          <div className="flex justify-between items-center mb-6 border-b border-gray-200 pb-4">
-            <h2 className="text-3xl font-serif italic text-gray-900">Order Lines</h2>
-            <div className="flex gap-3">
-              <button type="button" className="flex items-center gap-2 px-4 py-2 border border-gray-900 text-sm font-bold tracking-wider uppercase hover:bg-gray-100 transition-colors">
-                <Download className="w-4 h-4" /> Template
+        <div className="bg-[#FAF9F6] p-4 sm:p-8 border border-gray-200 shadow-sm">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 border-b border-gray-200 pb-4">
+            <h2 className="text-2xl sm:text-3xl font-serif italic text-gray-900">Order Lines</h2>
+            <div className="flex flex-wrap gap-2 sm:gap-3">
+              <button type="button" className="flex items-center gap-2 px-3 sm:px-4 py-2 border border-gray-900 text-xs sm:text-sm font-bold tracking-wider uppercase hover:bg-gray-100 transition-colors">
+                <Download className="w-4 h-4" /> <span className="hidden sm:inline">Template</span>
               </button>
-              <button type="button" className="flex items-center gap-2 px-4 py-2 border border-gray-900 text-sm font-bold tracking-wider uppercase hover:bg-gray-100 transition-colors">
-                <Upload className="w-4 h-4" /> Upload Excel
+              <button type="button" className="flex items-center gap-2 px-3 sm:px-4 py-2 border border-gray-900 text-xs sm:text-sm font-bold tracking-wider uppercase hover:bg-gray-100 transition-colors">
+                <Upload className="w-4 h-4" /> <span className="hidden sm:inline">Upload Excel</span>
               </button>
-              <button type="button" onClick={addLine} className="flex items-center gap-2 px-4 py-2 bg-[#141414] text-white text-sm font-bold tracking-wider uppercase hover:bg-black transition-colors">
+              <button type="button" onClick={addLine} className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-[#141414] text-white text-xs sm:text-sm font-bold tracking-wider uppercase hover:bg-black transition-colors">
                 <Plus className="w-4 h-4" /> Add Line
               </button>
             </div>
@@ -521,17 +521,17 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => void }
           </div>
         </div>
 
-        <div className="flex justify-end gap-4 pt-4">
+        <div className="flex flex-col sm:flex-row justify-end gap-4 pt-4">
           <button 
             type="button" 
             onClick={() => navigate('/work-orders/open')}
-            className="px-6 py-3 border border-gray-300 text-sm font-bold tracking-wider uppercase hover:bg-gray-50 transition-colors"
+            className="w-full sm:w-auto px-6 py-3 border border-gray-300 text-sm font-bold tracking-wider uppercase hover:bg-gray-50 transition-colors"
           >
             Cancel
           </button>
           <button 
             type="submit" 
-            className="px-6 py-3 bg-[#141414] text-white text-sm font-bold tracking-wider uppercase hover:bg-black transition-colors"
+            className="w-full sm:w-auto px-6 py-3 bg-[#141414] text-white text-sm font-bold tracking-wider uppercase hover:bg-black transition-colors"
           >
             Save Work Order
           </button>
@@ -645,7 +645,7 @@ function WorkOrderHistory({ orders }: { orders: any[] }) {
           <select
             value={searchStatus}
             onChange={(e) => setSearchStatus(e.target.value)}
-            className="block w-full sm:w-48 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+            className="block w-full sm:w-48 pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md bg-white"
           >
             <option value="">All Statuses</option>
             <option value="Planned">Planned</option>
@@ -654,10 +654,10 @@ function WorkOrderHistory({ orders }: { orders: any[] }) {
             <option value="Canceled">Canceled</option>
           </select>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 w-full sm:w-auto">
           <button 
             onClick={handleExport}
-            className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            className="w-full sm:w-auto inline-flex justify-center items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
             <Download className="h-4 w-4 mr-2" />
             Export
@@ -722,7 +722,7 @@ function WorkOrderHistory({ orders }: { orders: any[] }) {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           <span className={cn(
                             "px-2 inline-flex text-xs leading-5 font-semibold rounded-full",
-                            delayDays > 0 ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"
+                            typeof delayDays === 'number' && delayDays > 0 ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"
                           )}>
                             {delayDays}
                           </span>

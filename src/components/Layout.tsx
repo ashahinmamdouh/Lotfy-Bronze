@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -33,8 +33,20 @@ const navigation = [
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [logo, setLogo] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    const loadLogo = () => {
+      const savedLogo = localStorage.getItem('companyLogo');
+      setLogo(savedLogo);
+    };
+
+    loadLogo();
+    window.addEventListener('companyLogoChanged', loadLogo);
+    return () => window.removeEventListener('companyLogoChanged', loadLogo);
+  }, []);
 
   const handleLogout = () => {
     navigate('/login');
@@ -54,9 +66,14 @@ export default function Layout() {
         <div className="fixed inset-0 bg-gray-900/80" onClick={() => setSidebarOpen(false)} />
         <div className="fixed inset-y-0 left-0 w-72 bg-[#141414] text-white flex flex-col">
           <div className="flex items-center justify-between h-24 px-6 border-b border-gray-800">
-            <div>
-              <span className="block text-2xl font-serif italic text-[#f27d26]">Lotfy Bronze</span>
-              <span className="block text-xs font-semibold tracking-widest text-gray-500 mt-1 uppercase">Foundry Management</span>
+            <div className="flex items-center gap-3">
+              {logo && (
+                <img src={logo} alt="Company Logo" className="h-10 w-10 object-contain bg-white rounded-md p-0.5" />
+              )}
+              <div>
+                <span className="block text-2xl font-serif italic text-[#f27d26]">Lotfy Bronze</span>
+                <span className="block text-xs font-semibold tracking-widest text-gray-500 mt-1 uppercase">Foundry Management</span>
+              </div>
             </div>
             <button onClick={() => setSidebarOpen(false)} className="p-1 text-gray-400 hover:text-white">
               <X className="w-6 h-6" />
@@ -106,8 +123,15 @@ export default function Layout() {
       {/* Desktop sidebar */}
       <div className="hidden lg:flex lg:flex-col lg:w-72 lg:fixed lg:inset-y-0 bg-[#141414] text-white z-20">
         <div className="flex flex-col justify-center h-24 px-8 border-b border-gray-800 shrink-0">
-          <span className="block text-2xl font-serif italic text-[#f27d26]">Lotfy Bronze</span>
-          <span className="block text-[10px] font-bold tracking-[0.15em] text-gray-500 mt-1 uppercase">Foundry Management</span>
+          <div className="flex items-center gap-3">
+            {logo && (
+              <img src={logo} alt="Company Logo" className="h-10 w-10 object-contain bg-white rounded-md p-0.5" />
+            )}
+            <div>
+              <span className="block text-2xl font-serif italic text-[#f27d26]">Lotfy Bronze</span>
+              <span className="block text-[10px] font-bold tracking-[0.15em] text-gray-500 mt-1 uppercase">Foundry Management</span>
+            </div>
+          </div>
         </div>
         <nav className="flex-1 overflow-y-auto py-6 custom-scrollbar">
           <ul className="space-y-1">
@@ -150,18 +174,18 @@ export default function Layout() {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col lg:pl-72 min-w-0">
-        <header className="h-24 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-8 shrink-0 sticky top-0 z-10">
-          <div className="flex items-center gap-4">
+        <header className="h-20 sm:h-24 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-8 shrink-0 sticky top-0 z-10">
+          <div className="flex items-center gap-2 sm:gap-4">
             <button
               onClick={() => setSidebarOpen(true)}
               className="lg:hidden p-2 -ml-2 text-gray-500 hover:text-gray-900"
             >
               <Menu className="w-6 h-6" />
             </button>
-            <h1 className="text-[28px] font-serif italic text-[#0a192f] tracking-tight">{getPageTitle()}</h1>
+            <h1 className="text-xl sm:text-[28px] font-serif italic text-[#0a192f] tracking-tight truncate">{getPageTitle()}</h1>
           </div>
           
-          <div className="flex flex-col items-end justify-center">
+          <div className="hidden sm:flex flex-col items-end justify-center">
             <div className="text-[15px] text-gray-900 font-medium">
               {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
             </div>

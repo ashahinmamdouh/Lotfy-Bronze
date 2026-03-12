@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { Settings as SettingsIcon, Users, Sliders, Globe } from 'lucide-react';
@@ -67,6 +67,139 @@ function UserManagement() {
   );
 }
 
+function GeneralSettings() {
+  const [logo, setLogo] = useState<string | null>(null);
+
+  useEffect(() => {
+    const savedLogo = localStorage.getItem('companyLogo');
+    if (savedLogo) {
+      setLogo(savedLogo);
+    }
+  }, []);
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        setLogo(result);
+        localStorage.setItem('companyLogo', result);
+        // Dispatch a custom event so other components (like Layout) can update immediately
+        window.dispatchEvent(new Event('companyLogoChanged'));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveLogo = () => {
+    setLogo(null);
+    localStorage.removeItem('companyLogo');
+    window.dispatchEvent(new Event('companyLogoChanged'));
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-medium text-gray-900">General Settings</h3>
+        <p className="mt-1 text-sm text-gray-500">Manage your company profile and general preferences.</p>
+      </div>
+
+      <div className="bg-white shadow px-4 py-5 sm:rounded-lg sm:p-6 border border-gray-200">
+        <div className="md:grid md:grid-cols-3 md:gap-6">
+          <div className="md:col-span-1">
+            <h3 className="text-lg font-medium leading-6 text-gray-900">Company Profile</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              This information will be displayed across the application.
+            </p>
+          </div>
+          <div className="mt-5 md:mt-0 md:col-span-2">
+            <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Company Logo</label>
+                <div className="mt-1 flex items-center space-x-5">
+                  <span className="inline-block h-16 w-16 rounded-lg overflow-hidden bg-gray-100 border border-gray-200 flex-shrink-0">
+                    {logo ? (
+                      <img src={logo} alt="Company Logo" className="h-full w-full object-contain bg-white" />
+                    ) : (
+                      <svg className="h-full w-full text-gray-300" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z" />
+                      </svg>
+                    )}
+                  </span>
+                  <div className="flex flex-col gap-2">
+                    <label
+                      htmlFor="logo-upload"
+                      className="bg-white py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 cursor-pointer text-center"
+                    >
+                      <span>Upload Logo</span>
+                      <input
+                        id="logo-upload"
+                        name="logo-upload"
+                        type="file"
+                        accept="image/*"
+                        className="sr-only"
+                        onChange={handleLogoUpload}
+                      />
+                    </label>
+                    {logo && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveLogo}
+                        className="bg-white py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm leading-4 font-medium text-red-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <p className="mt-2 text-xs text-gray-500">Recommended size: 256x256px. PNG, JPG, GIF up to 2MB.</p>
+              </div>
+
+              <div className="grid grid-cols-6 gap-6">
+                <div className="col-span-6 sm:col-span-3">
+                  <label htmlFor="company-name" className="block text-sm font-medium text-gray-700">
+                    Company Name
+                  </label>
+                  <input
+                    type="text"
+                    name="company-name"
+                    id="company-name"
+                    defaultValue="Lotfy Bronze"
+                    className="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md py-2 px-3 border"
+                  />
+                </div>
+
+                <div className="col-span-6 sm:col-span-3">
+                  <label htmlFor="email-address" className="block text-sm font-medium text-gray-700">
+                    Email address
+                  </label>
+                  <input
+                    type="email"
+                    name="email-address"
+                    id="email-address"
+                    defaultValue="info@lotfybronze.com"
+                    className="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md py-2 px-3 border"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  className="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-[#141414] hover:bg-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PlaceholderTab({ title }: { title: string }) {
   return (
     <div className="py-12 text-center">
@@ -117,7 +250,7 @@ export default function Settings() {
           <Routes>
             <Route path="/" element={<Navigate to="users" replace />} />
             <Route path="users" element={<UserManagement />} />
-            <Route path="general" element={<PlaceholderTab title="General Settings" />} />
+            <Route path="general" element={<GeneralSettings />} />
             <Route path="system" element={<PlaceholderTab title="System Settings" />} />
           </Routes>
         </div>

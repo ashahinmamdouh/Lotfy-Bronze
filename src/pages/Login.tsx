@@ -1,10 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useFirebase } from '../context/FirebaseContext';
 
 export default function Login() {
   const { user, signInWithGoogle } = useFirebase();
   const navigate = useNavigate();
+  const [logo, setLogo] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -12,10 +13,24 @@ export default function Login() {
     }
   }, [user, navigate]);
 
+  useEffect(() => {
+    const savedLogo = localStorage.getItem('companyLogo');
+    if (savedLogo) {
+      setLogo(savedLogo);
+    }
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md flex flex-col items-center">
+        {logo ? (
+          <img src={logo} alt="Company Logo" className="h-24 w-24 object-contain bg-white rounded-lg shadow-sm p-2 mb-4" />
+        ) : (
+          <div className="h-24 w-24 bg-indigo-100 rounded-lg shadow-sm flex items-center justify-center mb-4">
+            <span className="text-3xl font-serif italic text-indigo-600">LB</span>
+          </div>
+        )}
+        <h2 className="mt-2 text-center text-3xl font-extrabold text-gray-900">
           Sign in to your account
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
