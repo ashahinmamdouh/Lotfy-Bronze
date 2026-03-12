@@ -72,7 +72,7 @@ export default function Layout() {
               )}
               <div>
                 <span className="block text-2xl font-serif italic text-[#f27d26]">Lotfy Bronze</span>
-                <span className="block text-xs font-semibold tracking-widest text-gray-500 mt-1 uppercase">Foundry Management</span>
+                <span className="block text-xs font-semibold tracking-widest text-gray-500 mt-1 uppercase">Quality From Experience</span>
               </div>
             </div>
             <button onClick={() => setSidebarOpen(false)} className="p-1 text-gray-400 hover:text-white">
@@ -129,7 +129,7 @@ export default function Layout() {
             )}
             <div>
               <span className="block text-2xl font-serif italic text-[#f27d26]">Lotfy Bronze</span>
-              <span className="block text-[10px] font-bold tracking-[0.15em] text-gray-500 mt-1 uppercase">Foundry Management</span>
+              <span className="block text-[10px] font-bold tracking-[0.15em] text-gray-500 mt-1 uppercase">Quality From Experience</span>
             </div>
           </div>
         </div>

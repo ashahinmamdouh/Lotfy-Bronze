@@ -34,7 +34,7 @@ export default function Login() {
           Sign in to your account
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
-          Foundry Lotfy Bronze Management System
+          Lotfy Bronze - Quality From Experience
         </p>
       </div>
 
