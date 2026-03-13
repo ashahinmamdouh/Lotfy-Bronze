@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { Database } from 'lucide-react';
 import { DataTable, Column } from '../components/DataTable';
+import { useMasterData } from '../context/MasterDataContext';
 
 const tabs = [
   { name: 'MATERIALS', path: 'materials' },
@@ -177,116 +178,130 @@ function PlaceholderTab({ title }: { title: string }) {
 }
 
 export default function MasterData() {
-  const [materials, setMaterials] = useState(initialMaterials);
-  const [products, setProducts] = useState(initialProducts);
-  const [processes, setProcesses] = useState(initialProcesses);
-  const [status, setStatus] = useState(initialStatus);
-  const [workshops, setWorkshops] = useState(initialWorkshops);
-  const [operators, setOperators] = useState(initialOperators);
-  const [machines, setMachines] = useState(initialMachines);
-  const [molds, setMolds] = useState(initialMolds);
-  const [routing, setRouting] = useState(initialRouting);
-  const [rejections, setRejections] = useState(initialRejections);
+  const {
+    materials, products, processes, status, workshops, operators, machines, molds, routing, rejections,
+    addMasterData, updateMasterData, deleteMasterData
+  } = useMasterData();
 
   // Materials
-  const handleAddMaterial = (item: any) => setMaterials([...materials, item]);
-  const handleAddMultipleMaterials = (items: any[]) => setMaterials([...materials, ...items]);
+  const handleAddMaterial = (item: any) => addMasterData('master_materials', item);
+  const handleAddMultipleMaterials = (items: any[]) => items.forEach(item => addMasterData('master_materials', item));
   const handleEditMaterial = (item: any, index: number) => {
-    const newData = [...materials];
-    newData[index] = item;
-    setMaterials(newData);
+    const id = materials[index]?._id;
+    if (id) updateMasterData('master_materials', id, item);
   };
-  const handleDeleteMaterial = (index: number) => setMaterials(materials.filter((_, i) => i !== index));
+  const handleDeleteMaterial = (index: number) => {
+    const id = materials[index]?._id;
+    if (id) deleteMasterData('master_materials', id);
+  };
 
   // Products
-  const handleAddProduct = (item: any) => setProducts([...products, item]);
-  const handleAddMultipleProducts = (items: any[]) => setProducts([...products, ...items]);
+  const handleAddProduct = (item: any) => addMasterData('master_products', item);
+  const handleAddMultipleProducts = (items: any[]) => items.forEach(item => addMasterData('master_products', item));
   const handleEditProduct = (item: any, index: number) => {
-    const newData = [...products];
-    newData[index] = item;
-    setProducts(newData);
+    const id = products[index]?._id;
+    if (id) updateMasterData('master_products', id, item);
   };
-  const handleDeleteProduct = (index: number) => setProducts(products.filter((_, i) => i !== index));
+  const handleDeleteProduct = (index: number) => {
+    const id = products[index]?._id;
+    if (id) deleteMasterData('master_products', id);
+  };
 
   // Processes
-  const handleAddProcess = (item: any) => setProcesses([...processes, item]);
-  const handleAddMultipleProcesses = (items: any[]) => setProcesses([...processes, ...items]);
+  const handleAddProcess = (item: any) => addMasterData('master_processes', item);
+  const handleAddMultipleProcesses = (items: any[]) => items.forEach(item => addMasterData('master_processes', item));
   const handleEditProcess = (item: any, index: number) => {
-    const newData = [...processes];
-    newData[index] = item;
-    setProcesses(newData);
+    const id = processes[index]?._id;
+    if (id) updateMasterData('master_processes', id, item);
   };
-  const handleDeleteProcess = (index: number) => setProcesses(processes.filter((_, i) => i !== index));
+  const handleDeleteProcess = (index: number) => {
+    const id = processes[index]?._id;
+    if (id) deleteMasterData('master_processes', id);
+  };
 
   // Status
-  const handleAddStatus = (item: any) => setStatus([...status, item]);
-  const handleAddMultipleStatus = (items: any[]) => setStatus([...status, ...items]);
+  const handleAddStatus = (item: any) => addMasterData('master_status', item);
+  const handleAddMultipleStatus = (items: any[]) => items.forEach(item => addMasterData('master_status', item));
   const handleEditStatus = (item: any, index: number) => {
-    const newData = [...status];
-    newData[index] = item;
-    setStatus(newData);
+    const id = status[index]?._id;
+    if (id) updateMasterData('master_status', id, item);
   };
-  const handleDeleteStatus = (index: number) => setStatus(status.filter((_, i) => i !== index));
+  const handleDeleteStatus = (index: number) => {
+    const id = status[index]?._id;
+    if (id) deleteMasterData('master_status', id);
+  };
 
   // Workshops
-  const handleAddWorkshop = (item: any) => setWorkshops([...workshops, item]);
-  const handleAddMultipleWorkshops = (items: any[]) => setWorkshops([...workshops, ...items]);
+  const handleAddWorkshop = (item: any) => addMasterData('master_workshops', item);
+  const handleAddMultipleWorkshops = (items: any[]) => items.forEach(item => addMasterData('master_workshops', item));
   const handleEditWorkshop = (item: any, index: number) => {
-    const newData = [...workshops];
-    newData[index] = item;
-    setWorkshops(newData);
+    const id = workshops[index]?._id;
+    if (id) updateMasterData('master_workshops', id, item);
   };
-  const handleDeleteWorkshop = (index: number) => setWorkshops(workshops.filter((_, i) => i !== index));
+  const handleDeleteWorkshop = (index: number) => {
+    const id = workshops[index]?._id;
+    if (id) deleteMasterData('master_workshops', id);
+  };
 
   // Operators
-  const handleAddOperator = (item: any) => setOperators([...operators, item]);
-  const handleAddMultipleOperators = (items: any[]) => setOperators([...operators, ...items]);
+  const handleAddOperator = (item: any) => addMasterData('master_operators', item);
+  const handleAddMultipleOperators = (items: any[]) => items.forEach(item => addMasterData('master_operators', item));
   const handleEditOperator = (item: any, index: number) => {
-    const newData = [...operators];
-    newData[index] = item;
-    setOperators(newData);
+    const id = operators[index]?._id;
+    if (id) updateMasterData('master_operators', id, item);
   };
-  const handleDeleteOperator = (index: number) => setOperators(operators.filter((_, i) => i !== index));
+  const handleDeleteOperator = (index: number) => {
+    const id = operators[index]?._id;
+    if (id) deleteMasterData('master_operators', id);
+  };
 
   // Machines
-  const handleAddMachine = (item: any) => setMachines([...machines, item]);
-  const handleAddMultipleMachines = (items: any[]) => setMachines([...machines, ...items]);
+  const handleAddMachine = (item: any) => addMasterData('master_machines', item);
+  const handleAddMultipleMachines = (items: any[]) => items.forEach(item => addMasterData('master_machines', item));
   const handleEditMachine = (item: any, index: number) => {
-    const newData = [...machines];
-    newData[index] = item;
-    setMachines(newData);
+    const id = machines[index]?._id;
+    if (id) updateMasterData('master_machines', id, item);
   };
-  const handleDeleteMachine = (index: number) => setMachines(machines.filter((_, i) => i !== index));
+  const handleDeleteMachine = (index: number) => {
+    const id = machines[index]?._id;
+    if (id) deleteMasterData('master_machines', id);
+  };
 
   // Molds
-  const handleAddMold = (item: any) => setMolds([...molds, item]);
-  const handleAddMultipleMolds = (items: any[]) => setMolds([...molds, ...items]);
+  const handleAddMold = (item: any) => addMasterData('master_molds', item);
+  const handleAddMultipleMolds = (items: any[]) => items.forEach(item => addMasterData('master_molds', item));
   const handleEditMold = (item: any, index: number) => {
-    const newData = [...molds];
-    newData[index] = item;
-    setMolds(newData);
+    const id = molds[index]?._id;
+    if (id) updateMasterData('master_molds', id, item);
   };
-  const handleDeleteMold = (index: number) => setMolds(molds.filter((_, i) => i !== index));
+  const handleDeleteMold = (index: number) => {
+    const id = molds[index]?._id;
+    if (id) deleteMasterData('master_molds', id);
+  };
 
   // Routing
-  const handleAddRouting = (item: any) => setRouting([...routing, item]);
-  const handleAddMultipleRouting = (items: any[]) => setRouting([...routing, ...items]);
+  const handleAddRouting = (item: any) => addMasterData('master_routing', item);
+  const handleAddMultipleRouting = (items: any[]) => items.forEach(item => addMasterData('master_routing', item));
   const handleEditRouting = (item: any, index: number) => {
-    const newData = [...routing];
-    newData[index] = item;
-    setRouting(newData);
+    const id = routing[index]?._id;
+    if (id) updateMasterData('master_routing', id, item);
   };
-  const handleDeleteRouting = (index: number) => setRouting(routing.filter((_, i) => i !== index));
+  const handleDeleteRouting = (index: number) => {
+    const id = routing[index]?._id;
+    if (id) deleteMasterData('master_routing', id);
+  };
 
   // Rejections
-  const handleAddRejection = (item: any) => setRejections([...rejections, item]);
-  const handleAddMultipleRejections = (items: any[]) => setRejections([...rejections, ...items]);
+  const handleAddRejection = (item: any) => addMasterData('master_rejections', item);
+  const handleAddMultipleRejections = (items: any[]) => items.forEach(item => addMasterData('master_rejections', item));
   const handleEditRejection = (item: any, index: number) => {
-    const newData = [...rejections];
-    newData[index] = item;
-    setRejections(newData);
+    const id = rejections[index]?._id;
+    if (id) updateMasterData('master_rejections', id, item);
   };
-  const handleDeleteRejection = (index: number) => setRejections(rejections.filter((_, i) => i !== index));
+  const handleDeleteRejection = (index: number) => {
+    const id = rejections[index]?._id;
+    if (id) deleteMasterData('master_rejections', id);
+  };
 
   const dynamicRoutingColumns = routingColumns.map(col => {
     if (col.accessor === 'process') {
@@ -312,9 +327,25 @@ export default function MasterData() {
     return col;
   });
 
+  const [showDemoConfirm, setShowDemoConfirm] = React.useState(false);
+  
+  const handleLoadDemoData = () => {
+    handleAddMultipleMaterials(initialMaterials);
+    handleAddMultipleProducts(initialProducts);
+    handleAddMultipleProcesses(initialProcesses);
+    handleAddMultipleStatus(initialStatus);
+    handleAddMultipleWorkshops(initialWorkshops);
+    handleAddMultipleOperators(initialOperators);
+    handleAddMultipleMachines(initialMachines);
+    handleAddMultipleMolds(initialMolds);
+    handleAddMultipleRouting(initialRouting);
+    handleAddMultipleRejections(initialRejections);
+    setShowDemoConfirm(false);
+  };
+
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
-      <div>
+      <div className="flex justify-between items-start">
         <nav className="flex flex-wrap gap-x-2 gap-y-4" aria-label="Tabs">
           {tabs.map((tab) => (
             <NavLink
@@ -333,7 +364,38 @@ export default function MasterData() {
             </NavLink>
           ))}
         </nav>
+        <button
+          onClick={() => setShowDemoConfirm(true)}
+          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        >
+          Load Demo Data
+        </button>
       </div>
+
+      {showDemoConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Load Demo Data?</h3>
+            <p className="text-sm text-gray-500 mb-6">
+              This will add demo data to all master data collections. Are you sure you want to proceed?
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowDemoConfirm(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleLoadDemoData}
+                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700"
+              >
+                Load Data
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="pt-2">
         <Routes>

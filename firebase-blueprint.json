@@ -43,6 +43,46 @@
     "workOrders": {
       "schema": { "$ref": "#/entities/WorkOrder" },
       "description": "Collection of all work orders"
+    },
+    "master_materials": {
+      "schema": { "type": "object" },
+      "description": "Master data for materials"
+    },
+    "master_products": {
+      "schema": { "type": "object" },
+      "description": "Master data for products"
+    },
+    "master_processes": {
+      "schema": { "type": "object" },
+      "description": "Master data for processes"
+    },
+    "master_status": {
+      "schema": { "type": "object" },
+      "description": "Master data for status types"
+    },
+    "master_workshops": {
+      "schema": { "type": "object" },
+      "description": "Master data for workshops"
+    },
+    "master_operators": {
+      "schema": { "type": "object" },
+      "description": "Master data for operators"
+    },
+    "master_machines": {
+      "schema": { "type": "object" },
+      "description": "Master data for machines"
+    },
+    "master_molds": {
+      "schema": { "type": "object" },
+      "description": "Master data for molds"
+    },
+    "master_routing": {
+      "schema": { "type": "object" },
+      "description": "Master data for routing"
+    },
+    "master_rejections": {
+      "schema": { "type": "object" },
+      "description": "Master data for rejection reasons"
     }
   }
 }

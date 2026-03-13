@@ -62,6 +62,17 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /master_materials/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
+    match /master_products/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
+    match /master_processes/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
+    match /master_status/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
+    match /master_workshops/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
+    match /master_operators/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
+    match /master_machines/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
+    match /master_molds/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
+    match /master_routing/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
+    match /master_rejections/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
+
     match /workOrders/{orderId} {
       allow read: if isAuthenticated();
       
