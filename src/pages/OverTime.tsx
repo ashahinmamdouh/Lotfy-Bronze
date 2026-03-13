@@ -3,6 +3,7 @@ import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { Clock, Plus, Search, X } from 'lucide-react';
 import { useFirebase } from '../context/FirebaseContext';
+import { useMasterData } from '../context/MasterDataContext';
 import { collection, addDoc, onSnapshot, query, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -16,9 +17,11 @@ function RequestedOvertime() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const { user, isAuthReady } = useFirebase();
+  const { operators } = useMasterData();
 
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
+    operatorId: '',
     operator: '',
     workshop: '',
     hours: 0,
@@ -52,7 +55,7 @@ function RequestedOvertime() {
         createdAt: new Date().toISOString()
       });
       setShowAddModal(false);
-      setFormData({ date: new Date().toISOString().split('T')[0], operator: '', workshop: '', hours: 0, reason: '' });
+      setFormData({ date: new Date().toISOString().split('T')[0], operatorId: '', operator: '', workshop: '', hours: 0, reason: '' });
     } catch (error) {
       console.error('Error adding overtime request:', error);
       alert('Failed to add overtime request.');
@@ -69,9 +72,30 @@ function RequestedOvertime() {
     }
   };
 
+  const handleOperatorChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedOpId = e.target.value;
+    const selectedOp = operators.find(op => op.id === selectedOpId);
+    if (selectedOp) {
+      setFormData({
+        ...formData,
+        operatorId: selectedOp.id,
+        operator: selectedOp.name,
+        workshop: selectedOp.workshop
+      });
+    } else {
+      setFormData({
+        ...formData,
+        operatorId: '',
+        operator: '',
+        workshop: ''
+      });
+    }
+  };
+
   const filteredRequests = requests.filter(req => 
-    req.operator.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    req.workshop.toLowerCase().includes(searchTerm.toLowerCase())
+    (req.operator || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
+    (req.operatorId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (req.workshop || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -108,6 +132,7 @@ function RequestedOvertime() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Operator ID</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Operator</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Workshop</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hours</th>
@@ -119,6 +144,7 @@ function RequestedOvertime() {
                   {filteredRequests.map((req) => (
                     <tr key={req.id}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{req.date}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{req.operatorId}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{req.operator}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{req.workshop}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{req.hours}</td>
@@ -143,7 +169,7 @@ function RequestedOvertime() {
                   ))}
                   {filteredRequests.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
+                      <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
                         No overtime requests found.
                       </td>
                     </tr>
@@ -177,22 +203,26 @@ function RequestedOvertime() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Operator</label>
-                <input
-                  type="text"
+                <select
                   required
-                  value={formData.operator}
-                  onChange={e => setFormData({...formData, operator: e.target.value})}
+                  value={formData.operatorId}
+                  onChange={handleOperatorChange}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                />
+                >
+                  <option value="">Select Operator</option>
+                  {operators.map(op => (
+                    <option key={op.id} value={op.id}>{op.id} - {op.name}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Workshop</label>
                 <input
                   type="text"
                   required
+                  readOnly
                   value={formData.workshop}
-                  onChange={e => setFormData({...formData, workshop: e.target.value})}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  className="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                 />
               </div>
               <div>
