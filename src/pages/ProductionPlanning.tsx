@@ -13,7 +13,63 @@ const tabs = [
 ];
 
 function WorkOrderExecution() {
-  const { orders } = useWorkOrders();
+  const { orders, updateOrder } = useWorkOrders();
+
+  const handleStartStage = async (wo: any) => {
+    if (wo.status === 'Planned') {
+      await updateOrder(wo.id, { status: 'In Production' });
+    }
+  };
+
+  const handleNextStage = async (wo: any) => {
+    const currentIndex = wo.stages.findIndex((s: any) => s.status === 'current');
+    if (currentIndex >= 0 && currentIndex < wo.stages.length - 1) {
+      const newStages = [...wo.stages];
+      newStages[currentIndex].status = 'completed';
+      newStages[currentIndex + 1].status = 'current';
+      
+      const isLastStage = currentIndex + 1 === wo.stages.length - 1;
+      
+      await updateOrder(wo.id, { 
+        stages: newStages,
+        stage: newStages[currentIndex + 1].name,
+        status: isLastStage ? 'Completed' : 'In Production'
+      });
+    } else if (currentIndex === wo.stages.length - 1) {
+      const newStages = [...wo.stages];
+      newStages[currentIndex].status = 'completed';
+      await updateOrder(wo.id, {
+        stages: newStages,
+        status: 'Completed'
+      });
+    }
+  };
+
+  const handlePrevStage = async (wo: any) => {
+    const currentIndex = wo.stages.findIndex((s: any) => s.status === 'current');
+    if (currentIndex > 0) {
+      const newStages = [...wo.stages];
+      newStages[currentIndex].status = 'pending';
+      newStages[currentIndex - 1].status = 'current';
+      await updateOrder(wo.id, { 
+        stages: newStages,
+        stage: newStages[currentIndex - 1].name,
+        status: 'In Production'
+      });
+    }
+  };
+
+  const handleRework = async (wo: any) => {
+    const newStages = wo.stages.map((s: any, idx: number) => ({
+      ...s,
+      status: idx === 0 ? 'current' : 'pending'
+    }));
+    await updateOrder(wo.id, { 
+      stages: newStages,
+      stage: newStages[0].name,
+      status: 'In Production'
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -25,16 +81,31 @@ function WorkOrderExecution() {
               <p className="mt-1 max-w-2xl text-sm text-gray-500">{wo.material} - {wo.process}</p>
             </div>
             <div className="flex gap-2">
-              <button className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
+              <button 
+                onClick={() => handleStartStage(wo)}
+                disabled={wo.status !== 'Planned'}
+                className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 <Play className="h-3 w-3 mr-1" /> Start Stage
               </button>
-              <button className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-green-600 hover:bg-green-700">
+              <button 
+                onClick={() => handleNextStage(wo)}
+                disabled={wo.status === 'Completed'}
+                className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 <ArrowRight className="h-3 w-3 mr-1" /> Next Stage
               </button>
-              <button className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded shadow-sm text-gray-700 bg-white hover:bg-gray-50">
+              <button 
+                onClick={() => handlePrevStage(wo)}
+                disabled={wo.status === 'Completed' || wo.stages[0]?.status === 'current'}
+                className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded shadow-sm text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 <ArrowLeft className="h-3 w-3 mr-1" /> Prev Stage
               </button>
-              <button className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-red-600 hover:bg-red-700">
+              <button 
+                onClick={() => handleRework(wo)}
+                className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-red-600 hover:bg-red-700"
+              >
                 <RotateCcw className="h-3 w-3 mr-1" /> Rework
               </button>
             </div>

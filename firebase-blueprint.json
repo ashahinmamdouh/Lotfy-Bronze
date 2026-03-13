@@ -83,6 +83,10 @@
     "master_rejections": {
       "schema": { "type": "object" },
       "description": "Master data for rejection reasons"
+    },
+    "workshop_records": {
+      "schema": { "type": "object" },
+      "description": "Records of workshop execution activities"
     }
   }
 }

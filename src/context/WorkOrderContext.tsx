@@ -30,6 +30,8 @@ export interface WorkOrder {
 interface WorkOrderContextType {
   orders: WorkOrder[];
   addOrders: (newOrders: any[]) => Promise<void>;
+  updateOrder: (id: string, updatedData: Partial<WorkOrder>) => Promise<void>;
+  deleteOrder: (id: string) => Promise<void>;
 }
 
 export const WorkOrderContext = createContext<WorkOrderContextType | null>(null);
@@ -114,8 +116,27 @@ export const WorkOrderProvider = ({ children }: { children: React.ReactNode }) =
     }
   };
 
+  const updateOrder = async (id: string, updatedData: Partial<WorkOrder>) => {
+    if (!user) return;
+    try {
+      await setDoc(doc(db, 'workOrders', id), updatedData, { merge: true });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, 'workOrders', user);
+    }
+  };
+
+  const deleteOrder = async (id: string) => {
+    if (!user) return;
+    try {
+      const { deleteDoc } = await import('firebase/firestore');
+      await deleteDoc(doc(db, 'workOrders', id));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, 'workOrders', user);
+    }
+  };
+
   return (
-    <WorkOrderContext.Provider value={{ orders, addOrders }}>
+    <WorkOrderContext.Provider value={{ orders, addOrders, updateOrder, deleteOrder }}>
       {children}
     </WorkOrderContext.Provider>
   );
