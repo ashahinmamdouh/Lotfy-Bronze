@@ -87,6 +87,26 @@
     "workshop_records": {
       "schema": { "type": "object" },
       "description": "Records of workshop execution activities"
+    },
+    "quality_inspections": {
+      "schema": { "type": "object" },
+      "description": "Records of quality control inspections"
+    },
+    "inventory_records": {
+      "schema": { "type": "object" },
+      "description": "Records of inventory items"
+    },
+    "overtime_requests": {
+      "schema": { "type": "object" },
+      "description": "Records of overtime requests"
+    },
+    "settings": {
+      "schema": { "type": "object" },
+      "description": "Global application settings"
+    },
+    "users": {
+      "schema": { "type": "object" },
+      "description": "System users and their roles"
     }
   }
 }

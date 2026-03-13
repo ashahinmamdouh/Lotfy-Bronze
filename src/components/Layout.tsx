@@ -17,6 +17,9 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase';
+import { useFirebase } from '../context/FirebaseContext';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -34,22 +37,30 @@ const navigation = [
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [logo, setLogo] = useState<string | null>(null);
+  const [companyName, setCompanyName] = useState('Lotfy Bronze');
   const navigate = useNavigate();
   const location = useLocation();
+  const { logout, user } = useFirebase();
 
   useEffect(() => {
-    const loadLogo = () => {
-      const savedLogo = localStorage.getItem('companyLogo');
-      setLogo(savedLogo);
-    };
+    const unsubscribe = onSnapshot(doc(db, 'settings', 'general'), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.logo !== undefined) setLogo(data.logo);
+        if (data.companyName) setCompanyName(data.companyName);
+      }
+    });
 
-    loadLogo();
-    window.addEventListener('companyLogoChanged', loadLogo);
-    return () => window.removeEventListener('companyLogoChanged', loadLogo);
+    return () => unsubscribe();
   }, []);
 
-  const handleLogout = () => {
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/login');
+    } catch (error) {
+      console.error('Failed to log out', error);
+    }
   };
 
   const getPageTitle = () => {
@@ -71,7 +82,7 @@ export default function Layout() {
                 <img src={logo} alt="Company Logo" className="h-10 w-10 object-contain bg-white rounded-md p-0.5" />
               )}
               <div>
-                <span className="block text-2xl font-serif italic text-[#f27d26]">Lotfy Bronze</span>
+                <span className="block text-2xl font-serif italic text-[#f27d26]">{companyName}</span>
                 <span className="block text-xs font-semibold tracking-widest text-gray-500 mt-1 uppercase">Quality From Experience</span>
               </div>
             </div>
@@ -107,10 +118,10 @@ export default function Layout() {
           <div className="p-4 border-t border-gray-800 bg-[#1a1a1a]">
             <div className="flex items-center gap-3 px-2 py-2">
               <div className="w-10 h-10 rounded-full bg-[#f27d26] flex items-center justify-center text-white font-bold">
-                A
+                {user?.email?.[0].toUpperCase() || 'U'}
               </div>
               <div className="flex-1">
-                <div className="text-sm font-medium text-white">Admin</div>
+                <div className="text-sm font-medium text-white truncate max-w-[120px]">{user?.email || 'User'}</div>
               </div>
               <button onClick={handleLogout} className="text-gray-400 hover:text-white p-2">
                 <LogOut className="w-5 h-5" />
@@ -128,7 +139,7 @@ export default function Layout() {
               <img src={logo} alt="Company Logo" className="h-10 w-10 object-contain bg-white rounded-md p-0.5" />
             )}
             <div>
-              <span className="block text-2xl font-serif italic text-[#f27d26]">Lotfy Bronze</span>
+              <span className="block text-2xl font-serif italic text-[#f27d26]">{companyName}</span>
               <span className="block text-[10px] font-bold tracking-[0.15em] text-gray-500 mt-1 uppercase">Quality From Experience</span>
             </div>
           </div>
@@ -160,10 +171,10 @@ export default function Layout() {
         <div className="p-4 border-t border-gray-800 bg-[#1a1a1a] shrink-0">
           <div className="flex items-center gap-3 px-4 py-2">
             <div className="w-10 h-10 rounded-full bg-[#f27d26] flex items-center justify-center text-white font-bold">
-              A
+              {user?.email?.[0].toUpperCase() || 'U'}
             </div>
             <div className="flex-1">
-              <div className="text-sm font-medium text-white">Admin</div>
+              <div className="text-sm font-medium text-white truncate max-w-[120px]">{user?.email || 'User'}</div>
             </div>
             <button onClick={handleLogout} className="text-gray-400 hover:text-white p-2 transition-colors">
               <LogOut className="w-5 h-5" />

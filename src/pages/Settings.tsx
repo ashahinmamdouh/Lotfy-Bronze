@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
-import { Settings as SettingsIcon, Users, Sliders, Globe } from 'lucide-react';
+import { Settings as SettingsIcon, Users, Sliders, Globe, Plus, X } from 'lucide-react';
+import { collection, doc, getDoc, setDoc, onSnapshot, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { db } from '../firebase';
+import { useFirebase } from '../context/FirebaseContext';
 
 const tabs = [
   { name: 'User Management', path: 'users', icon: Users },
@@ -9,18 +12,102 @@ const tabs = [
   { name: 'System Setting', path: 'system', icon: Sliders },
 ];
 
-const mockUsers = [
-  { id: 1, name: 'Admin User', email: 'admin@lotfybronze.com', position: 'System Admin', dept: 'IT', role: 'Admin' },
-  { id: 2, name: 'Ahmed Hassan', email: 'ahmed@lotfybronze.com', position: 'Production Manager', dept: 'Production', role: 'Manager' },
-  { id: 3, name: 'Mohamed Ali', email: 'mohamed@lotfybronze.com', position: 'Quality Inspector', dept: 'Quality', role: 'Inspector' },
-];
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  position: string;
+  dept: string;
+  role: string;
+}
 
 function UserManagement() {
+  const [users, setUsers] = useState<User[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    position: '',
+    dept: '',
+    role: 'User'
+  });
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
+      const usersData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as User[];
+      setUsers(usersData);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleOpenModal = (user?: User) => {
+    if (user) {
+      setEditingUser(user);
+      setFormData({
+        name: user.name,
+        email: user.email,
+        position: user.position || '',
+        dept: user.dept || '',
+        role: user.role || 'User'
+      });
+    } else {
+      setEditingUser(null);
+      setFormData({
+        name: '',
+        email: '',
+        position: '',
+        dept: '',
+        role: 'User'
+      });
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingUser(null);
+  };
+
+  const handleSaveUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (editingUser) {
+        await updateDoc(doc(db, 'users', editingUser.id), formData);
+      } else {
+        await addDoc(collection(db, 'users'), formData);
+      }
+      handleCloseModal();
+    } catch (error) {
+      console.error('Error saving user:', error);
+      alert('Failed to save user.');
+    }
+  };
+
+  const handleDeleteUser = async (id: string) => {
+    if (window.confirm('Are you sure you want to delete this user?')) {
+      try {
+        await deleteDoc(doc(db, 'users', id));
+      } catch (error) {
+        console.error('Error deleting user:', error);
+        alert('Failed to delete user.');
+      }
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-medium text-gray-900">System Users</h3>
-        <button className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
+        <button 
+          onClick={() => handleOpenModal()}
+          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-[#141414] hover:bg-black"
+        >
+          <Plus className="w-4 h-4 mr-2" />
           Add User
         </button>
       </div>
@@ -37,65 +124,199 @@ function UserManagement() {
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                    <th scope="col" className="relative px-6 py-3"><span className="sr-only">Edit</span></th>
+                    <th scope="col" className="relative px-6 py-3"><span className="sr-only">Actions</span></th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {mockUsers.map((user) => (
+                  {users.map((user) => (
                     <tr key={user.id}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{user.name}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.email}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.position}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.dept}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-indigo-100 text-indigo-800">
+                        <span className={cn(
+                          "px-2 inline-flex text-xs leading-5 font-semibold rounded-full",
+                          user.role === 'Admin' ? "bg-purple-100 text-purple-800" :
+                          user.role === 'Manager' ? "bg-blue-100 text-blue-800" :
+                          "bg-green-100 text-green-800"
+                        )}>
                           {user.role}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button className="text-indigo-600 hover:text-indigo-900">Edit</button>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
+                        <button onClick={() => handleOpenModal(user)} className="text-indigo-600 hover:text-indigo-900">Edit</button>
+                        <button onClick={() => handleDeleteUser(user.id)} className="text-red-600 hover:text-red-900">Delete</button>
                       </td>
                     </tr>
                   ))}
+                  {users.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
+                        No users found.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
         </div>
       </div>
+
+      {/* User Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={handleCloseModal}></div>
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg leading-6 font-medium text-gray-900">
+                    {editingUser ? 'Edit User' : 'Add New User'}
+                  </h3>
+                  <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-500">
+                    <X className="h-6 w-6" />
+                  </button>
+                </div>
+                <form onSubmit={handleSaveUser} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Email</label>
+                    <input
+                      type="email"
+                      required
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Position</label>
+                    <input
+                      type="text"
+                      value={formData.position}
+                      onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Department</label>
+                    <input
+                      type="text"
+                      value={formData.dept}
+                      onChange={(e) => setFormData({ ...formData, dept: e.target.value })}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Role</label>
+                    <select
+                      value={formData.role}
+                      onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    >
+                      <option value="Admin">Admin</option>
+                      <option value="Manager">Manager</option>
+                      <option value="User">User</option>
+                    </select>
+                  </div>
+                  <div className="mt-5 sm:mt-6 sm:flex sm:flex-row-reverse">
+                    <button
+                      type="submit"
+                      className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-[#141414] text-base font-medium text-white hover:bg-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black sm:ml-3 sm:w-auto sm:text-sm"
+                    >
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCloseModal}
+                      className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 function GeneralSettings() {
   const [logo, setLogo] = useState<string | null>(null);
+  const [companyName, setCompanyName] = useState('Lotfy Bronze');
+  const [emailAddress, setEmailAddress] = useState('info@lotfybronze.com');
+  const { user } = useFirebase();
 
   useEffect(() => {
-    const savedLogo = localStorage.getItem('companyLogo');
-    if (savedLogo) {
-      setLogo(savedLogo);
-    }
+    const unsubscribe = onSnapshot(doc(db, 'settings', 'general'), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.logo) setLogo(data.logo);
+        if (data.companyName) setCompanyName(data.companyName);
+        if (data.emailAddress) setEmailAddress(data.emailAddress);
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 1024 * 1024) { // 1MB limit for Firestore
+        alert('File is too large. Please choose an image under 1MB.');
+        return;
+      }
       const reader = new FileReader();
-      reader.onloadend = () => {
+      reader.onloadend = async () => {
         const result = reader.result as string;
         setLogo(result);
-        localStorage.setItem('companyLogo', result);
-        // Dispatch a custom event so other components (like Layout) can update immediately
-        window.dispatchEvent(new Event('companyLogoChanged'));
+        try {
+          await setDoc(doc(db, 'settings', 'general'), { logo: result }, { merge: true });
+        } catch (error) {
+          console.error('Error saving logo:', error);
+        }
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleRemoveLogo = () => {
+  const handleRemoveLogo = async () => {
     setLogo(null);
-    localStorage.removeItem('companyLogo');
-    window.dispatchEvent(new Event('companyLogoChanged'));
+    try {
+      await setDoc(doc(db, 'settings', 'general'), { logo: null }, { merge: true });
+    } catch (error) {
+      console.error('Error removing logo:', error);
+    }
+  };
+
+  const handleSaveSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await setDoc(doc(db, 'settings', 'general'), {
+        companyName,
+        emailAddress
+      }, { merge: true });
+      alert('Settings saved successfully!');
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      alert('Failed to save settings.');
+    }
   };
 
   return (
@@ -114,7 +335,7 @@ function GeneralSettings() {
             </p>
           </div>
           <div className="mt-5 md:mt-0 md:col-span-2">
-            <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
+            <form className="space-y-6" onSubmit={handleSaveSettings}>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Company Logo</label>
                 <div className="mt-1 flex items-center space-x-5">
@@ -153,7 +374,7 @@ function GeneralSettings() {
                     )}
                   </div>
                 </div>
-                <p className="mt-2 text-xs text-gray-500">Recommended size: 256x256px. PNG, JPG, GIF up to 2MB.</p>
+                <p className="mt-2 text-xs text-gray-500">Recommended size: 256x256px. PNG, JPG, GIF up to 1MB.</p>
               </div>
 
               <div className="grid grid-cols-6 gap-6">
@@ -165,7 +386,8 @@ function GeneralSettings() {
                     type="text"
                     name="company-name"
                     id="company-name"
-                    defaultValue="Lotfy Bronze"
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
                     className="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md py-2 px-3 border"
                   />
                 </div>
@@ -178,7 +400,8 @@ function GeneralSettings() {
                     type="email"
                     name="email-address"
                     id="email-address"
-                    defaultValue="info@lotfybronze.com"
+                    value={emailAddress}
+                    onChange={(e) => setEmailAddress(e.target.value)}
                     className="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md py-2 px-3 border"
                   />
                 </div>

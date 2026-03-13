@@ -73,6 +73,11 @@ service cloud.firestore {
     match /master_routing/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
     match /master_rejections/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
     match /workshop_records/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
+    match /quality_inspections/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
+    match /inventory_records/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
+    match /overtime_requests/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
+    match /settings/{docId} { allow read: if true; allow write: if isAuthenticated(); }
+    match /users/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated(); allow update: if isAuthenticated(); allow delete: if isAuthenticated(); }
 
     match /workOrders/{orderId} {
       allow read: if isAuthenticated();

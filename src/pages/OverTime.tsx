@@ -1,19 +1,79 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
-import { Clock, Plus, Search } from 'lucide-react';
+import { Clock, Plus, Search, X } from 'lucide-react';
+import { useFirebase } from '../context/FirebaseContext';
+import { collection, addDoc, onSnapshot, query, orderBy, doc, updateDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 
 const tabs = [
   { name: 'Requested Overtime', path: 'requested' },
   { name: 'Overtime History', path: 'history' },
 ];
 
-const mockRequests = [
-  { id: 'OT-001', date: '2026-03-12', operator: 'Ahmed Hassan', workshop: 'Foundry A', hours: 4, reason: 'Urgent WO-2026-001 completion', status: 'Pending' },
-  { id: 'OT-002', date: '2026-03-13', operator: 'Mohamed Ali', workshop: 'Machining Shop', hours: 2, reason: 'Machine maintenance catch-up', status: 'Approved' },
-];
-
 function RequestedOvertime() {
+  const [requests, setRequests] = useState<any[]>([]);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const { user, isAuthReady } = useFirebase();
+
+  const [formData, setFormData] = useState({
+    date: new Date().toISOString().split('T')[0],
+    operator: '',
+    workshop: '',
+    hours: 0,
+    reason: ''
+  });
+
+  useEffect(() => {
+    if (!isAuthReady || !user) return;
+
+    const q = query(collection(db, 'overtime_requests'), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const records: any[] = [];
+      snapshot.forEach((doc) => {
+        records.push({ id: doc.id, ...doc.data() });
+      });
+      setRequests(records);
+    });
+
+    return () => unsubscribe();
+  }, [user, isAuthReady]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    try {
+      await addDoc(collection(db, 'overtime_requests'), {
+        ...formData,
+        status: 'Pending',
+        authorId: user.uid,
+        createdAt: new Date().toISOString()
+      });
+      setShowAddModal(false);
+      setFormData({ date: new Date().toISOString().split('T')[0], operator: '', workshop: '', hours: 0, reason: '' });
+    } catch (error) {
+      console.error('Error adding overtime request:', error);
+      alert('Failed to add overtime request.');
+    }
+  };
+
+  const handleStatusChange = async (id: string, newStatus: 'Approved' | 'Rejected') => {
+    try {
+      const docRef = doc(db, 'overtime_requests', id);
+      await updateDoc(docRef, { status: newStatus });
+    } catch (error) {
+      console.error('Error updating status:', error);
+      alert('Failed to update status.');
+    }
+  };
+
+  const filteredRequests = requests.filter(req => 
+    req.operator.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    req.workshop.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -23,12 +83,17 @@ function RequestedOvertime() {
           </div>
           <input
             type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             placeholder="Search requests..."
           />
         </div>
         <div className="flex gap-2">
-          <button className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+          <button 
+            onClick={() => setShowAddModal(true)}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
             <Plus className="h-4 w-4 mr-2" />
             New Request
           </button>
@@ -42,7 +107,6 @@ function RequestedOvertime() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Operator</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Workshop</th>
@@ -52,9 +116,8 @@ function RequestedOvertime() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {mockRequests.map((req) => (
+                  {filteredRequests.map((req) => (
                     <tr key={req.id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-indigo-600">{req.id}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{req.date}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{req.operator}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{req.workshop}</td>
@@ -62,7 +125,8 @@ function RequestedOvertime() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         <span className={cn(
                           "px-2 inline-flex text-xs leading-5 font-semibold rounded-full",
-                          req.status === 'Approved' ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
+                          req.status === 'Approved' ? "bg-green-100 text-green-800" : 
+                          req.status === 'Rejected' ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-800"
                         )}>
                           {req.status}
                         </span>
@@ -70,19 +134,108 @@ function RequestedOvertime() {
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         {req.status === 'Pending' && (
                           <div className="flex justify-end gap-2">
-                            <button className="text-green-600 hover:text-green-900">Approve</button>
-                            <button className="text-red-600 hover:text-red-900">Reject</button>
+                            <button onClick={() => handleStatusChange(req.id, 'Approved')} className="text-green-600 hover:text-green-900">Approve</button>
+                            <button onClick={() => handleStatusChange(req.id, 'Rejected')} className="text-red-600 hover:text-red-900">Reject</button>
                           </div>
                         )}
                       </td>
                     </tr>
                   ))}
+                  {filteredRequests.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
+                        No overtime requests found.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
         </div>
       </div>
+
+      {showAddModal && (
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="flex justify-between items-center p-6 border-b border-gray-200">
+              <h3 className="text-lg font-medium text-gray-900">New Overtime Request</h3>
+              <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-gray-500">
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Date</label>
+                <input
+                  type="date"
+                  required
+                  value={formData.date}
+                  onChange={e => setFormData({...formData, date: e.target.value})}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Operator</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.operator}
+                  onChange={e => setFormData({...formData, operator: e.target.value})}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Workshop</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.workshop}
+                  onChange={e => setFormData({...formData, workshop: e.target.value})}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Hours</label>
+                <input
+                  type="number"
+                  required
+                  min="0.5"
+                  step="0.5"
+                  value={formData.hours}
+                  onChange={e => setFormData({...formData, hours: Number(e.target.value)})}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Reason</label>
+                <textarea
+                  required
+                  value={formData.reason}
+                  onChange={e => setFormData({...formData, reason: e.target.value})}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  rows={3}
+                />
+              </div>
+              <div className="pt-4 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
+                >
+                  Submit Request
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
