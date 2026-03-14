@@ -37,6 +37,38 @@
         "authorId": { "type": "string" }
       },
       "required": ["id", "material", "qty", "weight", "authorId"]
+    },
+    "OvertimeRequest": {
+      "title": "OvertimeRequest",
+      "description": "Represents an overtime request for an operator",
+      "type": "object",
+      "properties": {
+        "operator": { "type": "string" },
+        "operatorId": { "type": "string" },
+        "workshop": { "type": "string" },
+        "date": { "type": "string" },
+        "timeFrom": { "type": "string" },
+        "timeTo": { "type": "string" },
+        "hours": { "type": "number" },
+        "reason": { "type": "string" },
+        "status": { "type": "string", "enum": ["Pending", "Approved", "Rejected"] },
+        "authorId": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "processedBy": { "type": "string" },
+        "processedAt": { "type": "string" }
+      },
+      "required": ["operator", "operatorId", "workshop", "date", "timeFrom", "timeTo", "hours", "status", "authorId"]
+    },
+    "User": {
+      "title": "User",
+      "description": "Represents a system user",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["Admin", "Manager", "User"] },
+        "displayName": { "type": "string" }
+      },
+      "required": ["email", "role"]
     }
   },
   "firestore": {
@@ -44,69 +76,27 @@
       "schema": { "$ref": "#/entities/WorkOrder" },
       "description": "Collection of all work orders"
     },
-    "master_materials": {
-      "schema": { "type": "object" },
-      "description": "Master data for materials"
-    },
-    "master_products": {
-      "schema": { "type": "object" },
-      "description": "Master data for products"
-    },
-    "master_processes": {
-      "schema": { "type": "object" },
-      "description": "Master data for processes"
-    },
-    "master_status": {
-      "schema": { "type": "object" },
-      "description": "Master data for status types"
-    },
-    "master_workshops": {
-      "schema": { "type": "object" },
-      "description": "Master data for workshops"
-    },
-    "master_operators": {
-      "schema": { "type": "object" },
-      "description": "Master data for operators"
-    },
-    "master_machines": {
-      "schema": { "type": "object" },
-      "description": "Master data for machines"
-    },
-    "master_molds": {
-      "schema": { "type": "object" },
-      "description": "Master data for molds"
-    },
-    "master_routing": {
-      "schema": { "type": "object" },
-      "description": "Master data for routing"
-    },
-    "master_rejections": {
-      "schema": { "type": "object" },
-      "description": "Master data for rejection reasons"
-    },
-    "workshop_records": {
-      "schema": { "type": "object" },
-      "description": "Records of workshop execution activities"
-    },
-    "quality_inspections": {
-      "schema": { "type": "object" },
-      "description": "Records of quality control inspections"
-    },
-    "inventory_records": {
-      "schema": { "type": "object" },
-      "description": "Records of inventory items"
-    },
     "overtime_requests": {
-      "schema": { "type": "object" },
-      "description": "Records of overtime requests"
-    },
-    "settings": {
-      "schema": { "type": "object" },
-      "description": "Global application settings"
+      "schema": { "$ref": "#/entities/OvertimeRequest" },
+      "description": "Collection of overtime requests"
     },
     "users": {
-      "schema": { "type": "object" },
-      "description": "System users and their roles"
-    }
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Collection of system users"
+    },
+    "master_materials": { "schema": { "type": "object" }, "description": "Master data for materials" },
+    "master_products": { "schema": { "type": "object" }, "description": "Master data for products" },
+    "master_processes": { "schema": { "type": "object" }, "description": "Master data for processes" },
+    "master_status": { "schema": { "type": "object" }, "description": "Master data for status types" },
+    "master_workshops": { "schema": { "type": "object" }, "description": "Master data for workshops" },
+    "master_operators": { "schema": { "type": "object" }, "description": "Master data for operators" },
+    "master_machines": { "schema": { "type": "object" }, "description": "Master data for machines" },
+    "master_molds": { "schema": { "type": "object" }, "description": "Master data for molds" },
+    "master_routing": { "schema": { "type": "object" }, "description": "Master data for routing" },
+    "master_rejections": { "schema": { "type": "object" }, "description": "Master data for rejection reasons" },
+    "workshop_records": { "schema": { "type": "object" }, "description": "Records of workshop execution activities" },
+    "quality_inspections": { "schema": { "type": "object" }, "description": "Records of quality control inspections" },
+    "inventory_records": { "schema": { "type": "object" }, "description": "Records of inventory items" },
+    "settings": { "schema": { "type": "object" }, "description": "Global application settings" }
   }
 }

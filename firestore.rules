@@ -75,9 +75,52 @@ service cloud.firestore {
     match /workshop_records/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
     match /quality_inspections/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
     match /inventory_records/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
-    match /overtime_requests/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin' ||
+          (request.auth.token.email == "a.shahin.mamdouh@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isManager() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'manager' ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Manager' ||
+         isAdmin());
+    }
+
+    function isValidOvertimeRequest(data) {
+      return data.operator is string && data.operator.size() > 0 &&
+             data.operatorId is string && data.operatorId.size() > 0 &&
+             data.workshop is string && data.workshop.size() > 0 &&
+             data.date is string &&
+             data.timeFrom is string &&
+             data.timeTo is string &&
+             data.hours is number &&
+             data.status in ['Pending', 'Approved', 'Rejected'] &&
+             data.authorId is string;
+    }
+
+    match /overtime_requests/{docId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && uidUnchanged() && isValidOvertimeRequest(request.resource.data);
+      allow update: if isAuthenticated() && uidNotModified() && (
+        // Owner can update if still Pending
+        (isDocOwner() && resource.data.status == 'Pending' && isValidOvertimeRequest(request.resource.data)) ||
+        // Admin/Manager can update status
+        (isManager() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'processedBy', 'processedAt']))
+      );
+      allow delete: if isDocOwner() && resource.data.status == 'Pending';
+    }
+
     match /settings/{docId} { allow read: if true; allow write: if isAuthenticated(); }
-    match /users/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated(); allow update: if isAuthenticated(); allow delete: if isAuthenticated(); }
+
+    match /users/{docId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin();
+      allow update: if isAdmin() || (isOwner(docId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName']));
+      allow delete: if isAdmin();
+    }
 
     match /workOrders/{orderId} {
       allow read: if isAuthenticated();

@@ -114,7 +114,11 @@ function RequestedOvertime() {
   const handleStatusChange = async (id: string, newStatus: 'Approved' | 'Rejected') => {
     try {
       const docRef = doc(db, 'overtime_requests', id);
-      await updateDoc(docRef, { status: newStatus });
+      await updateDoc(docRef, { 
+        status: newStatus,
+        processedBy: user?.email,
+        processedAt: new Date().toISOString()
+      });
     } catch (error) {
       console.error('Error updating status:', error);
       alert('Failed to update status.');
@@ -476,6 +480,7 @@ function OvertimeHistory() {
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider print:border print:border-gray-300">Time</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider print:border print:border-gray-300">Hours</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider print:border print:border-gray-300">Status</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider print:border print:border-gray-300">Processed By</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -496,11 +501,14 @@ function OvertimeHistory() {
                           {req.status}
                         </span>
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 print:border print:border-gray-300">
+                        {req.processedBy || '-'}
+                      </td>
                     </tr>
                   ))}
                   {filteredRequests.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500 print:border print:border-gray-300">
+                      <td colSpan={8} className="px-6 py-4 text-center text-sm text-gray-500 print:border print:border-gray-300">
                         No overtime history found for the selected filters.
                       </td>
                     </tr>
