@@ -17,9 +17,11 @@ export const FirebaseProvider = ({ children }: { children: React.ReactNode }) =>
   const [isAuthReady, setIsAuthReady] = useState(false);
 
   useEffect(() => {
+    console.log('FirebaseProvider checking auth state...');
     const testConnection = async () => {
       try {
         await getDocFromServer(doc(db, 'test', 'connection'));
+        console.log('Firestore connection test successful');
       } catch (error) {
         if (error instanceof Error && error.message.includes('the client is offline')) {
           console.error("Please check your Firebase configuration.");
@@ -29,6 +31,7 @@ export const FirebaseProvider = ({ children }: { children: React.ReactNode }) =>
     testConnection();
 
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      console.log('Auth state changed:', currentUser ? `User: ${currentUser.email}` : 'No user');
       setUser(currentUser);
       setIsAuthReady(true);
     });

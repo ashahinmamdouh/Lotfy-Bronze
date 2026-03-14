@@ -33,6 +33,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 export default function App() {
+  console.log('App rendering');
   return (
     <ErrorBoundary>
       <FirebaseProvider>
