@@ -1,8 +1,12 @@
 import React from 'react';
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
-import { CalendarDays, Play, ArrowRight, ArrowLeft, RotateCcw } from 'lucide-react';
+import { CalendarDays, Play, ArrowRight, ArrowLeft, RotateCcw, Bell, Check, X } from 'lucide-react';
 import { useWorkOrders } from '../context/WorkOrderContext';
+import { collection, onSnapshot, query, where, doc, updateDoc, orderBy } from 'firebase/firestore';
+import { db } from '../firebase';
+import { useFirebase } from '../context/FirebaseContext';
+import { useState, useEffect } from 'react';
 
 const tabs = [
   { name: 'Work Order Execution', path: 'execution' },
@@ -10,6 +14,7 @@ const tabs = [
   { name: 'Capacity Calculation', path: 'capacity' },
   { name: 'Routing', path: 'routing' },
   { name: 'Gantt Chart', path: 'gantt' },
+  { name: 'Planning Notification', path: 'notification' },
 ];
 
 function WorkOrderExecution() {
@@ -146,6 +151,128 @@ function WorkOrderExecution() {
   );
 }
 
+function PlanningNotification() {
+  const [overtimeRequests, setOvertimeRequests] = useState<any[]>([]);
+  const { user, isAuthReady } = useFirebase();
+  const [userRole, setUserRole] = useState<string>('User');
+
+  useEffect(() => {
+    if (!user?.email) return;
+    const q = query(collection(db, 'users'), where('email', '==', user.email));
+    const unsub = onSnapshot(q, (snapshot) => {
+      if (!snapshot.empty) {
+        setUserRole(snapshot.docs[0].data().role);
+      }
+    });
+    return () => unsub();
+  }, [user]);
+
+  useEffect(() => {
+    if (!isAuthReady || !user) return;
+
+    const q = query(
+      collection(db, 'overtime_requests'),
+      where('status', '==', 'Pending'),
+      orderBy('createdAt', 'desc')
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const records: any[] = [];
+      snapshot.forEach((doc) => {
+        records.push({ id: doc.id, ...doc.data() });
+      });
+      setOvertimeRequests(records);
+    });
+
+    return () => unsubscribe();
+  }, [user, isAuthReady]);
+
+  const handleStatusChange = async (id: string, newStatus: 'Approved' | 'Rejected') => {
+    try {
+      const docRef = doc(db, 'overtime_requests', id);
+      await updateDoc(docRef, { status: newStatus });
+    } catch (error) {
+      console.error('Error updating status:', error);
+      alert('Failed to update status.');
+    }
+  };
+
+  const canApprove = userRole === 'Admin' || userRole === 'Manager';
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-medium text-gray-900 flex items-center">
+          <Bell className="h-5 w-5 mr-2 text-indigo-600" />
+          Pending Overtime Notifications
+        </h2>
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+          {overtimeRequests.length} Pending
+        </span>
+      </div>
+
+      <div className="bg-white shadow overflow-hidden sm:rounded-md">
+        <ul className="divide-y divide-gray-200">
+          {overtimeRequests.map((req) => (
+            <li key={req.id}>
+              <div className="px-4 py-4 sm:px-6 hover:bg-gray-50 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div className="flex flex-col">
+                    <p className="text-sm font-medium text-indigo-600 truncate">
+                      {req.operator} ({req.operatorId})
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Workshop: {req.workshop}
+                    </p>
+                  </div>
+                  <div className="ml-2 flex-shrink-0 flex">
+                    <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                      {req.hours} Hours
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-2 sm:flex sm:justify-between">
+                  <div className="sm:flex">
+                    <p className="flex items-center text-sm text-gray-500">
+                      <CalendarDays className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
+                      {req.date} | {req.timeFrom} - {req.timeTo}
+                    </p>
+                  </div>
+                  <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
+                    <p className="italic">Reason: {req.reason}</p>
+                  </div>
+                </div>
+                {canApprove && (
+                  <div className="mt-4 flex justify-end space-x-3">
+                    <button
+                      onClick={() => handleStatusChange(req.id, 'Rejected')}
+                      className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    >
+                      <X className="h-4 w-4 mr-1 text-red-500" />
+                      Reject
+                    </button>
+                    <button
+                      onClick={() => handleStatusChange(req.id, 'Approved')}
+                      className="inline-flex items-center px-3 py-1.5 border border-transparent shadow-sm text-xs font-medium rounded text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                    >
+                      <Check className="h-4 w-4 mr-1" />
+                      Approve
+                    </button>
+                  </div>
+                )}
+              </div>
+            </li>
+          ))}
+          {overtimeRequests.length === 0 && (
+            <li className="px-4 py-12 text-center text-gray-500 italic">
+              No pending overtime requests at the moment.
+            </li>
+          )}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 function PlaceholderTab({ title }: { title: string }) {
   return (
     <div className="py-12 text-center">
@@ -194,6 +321,7 @@ export default function ProductionPlanning() {
             <Route path="capacity" element={<PlaceholderTab title="Capacity Calculation" />} />
             <Route path="routing" element={<PlaceholderTab title="Routing" />} />
             <Route path="gantt" element={<PlaceholderTab title="Gantt Chart" />} />
+            <Route path="notification" element={<PlanningNotification />} />
           </Routes>
         </div>
       </div>
