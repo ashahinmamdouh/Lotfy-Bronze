@@ -8,6 +8,7 @@ import { useMasterData } from '../context/MasterDataContext';
 const tabs = [
   { name: 'MATERIALS', path: 'materials' },
   { name: 'FG PRODUCTS', path: 'products' },
+  { name: 'CASTING TYPES', path: 'casting-types' },
   { name: 'MANUFACTURING PROCESSES', path: 'processes' },
   { name: 'STATUS TYPES', path: 'status' },
   { name: 'MACHINES', path: 'machines' },
@@ -101,13 +102,24 @@ const moldsColumns: Column[] = [
 
 // Routing Master
 const routingColumns: Column[] = [
-  { header: 'Routing ID', accessor: 'id' },
-  { header: 'Process Type', accessor: 'process' },
-  { header: 'Operation Sequence', accessor: 'sequence' },
-  { header: 'Operation Name', accessor: 'name' },
-  { header: 'Machine Type', accessor: 'machine' },
-  { header: 'Standard Time', accessor: 'time' },
-  { header: 'Quality Check Required', accessor: 'quality' },
+  { header: 'Route ID', accessor: 'routeId' },
+  { header: 'Casting Type', accessor: 'castingType' },
+  { header: 'Stage No', accessor: 'stageNo' },
+  { header: 'Workshop ID', accessor: 'workshopId' },
+  { header: 'Next Stage', accessor: 'nextStage' },
+  { header: 'Stage Name', accessor: 'stageName' },
+  { header: 'Product Category', accessor: 'productCategory' },
+  { header: 'Std Time (min/unit)', accessor: 'stdTime' },
+  { header: 'Operators Required', accessor: 'operatorsRequired' },
+  { header: 'QC Required', accessor: 'qcRequired' },
+  { header: 'Skill Level', accessor: 'skillLevel' },
+  { header: 'Notes', accessor: 'notes' },
+];
+
+// Casting Types
+const castingTypesColumns: Column[] = [
+  { header: 'Casting Type', accessor: 'name' },
+  { header: 'Description', accessor: 'description' },
 ];
 
 // Rejection Reasons
@@ -129,7 +141,7 @@ function PlaceholderTab({ title }: { title: string }) {
 
 export default function MasterData() {
   const {
-    materials, products, processes, status, workshops, operators, machines, molds, routing, rejections,
+    materials, products, processes, status, workshops, operators, machines, molds, routing, rejections, castingTypes,
     addMasterData, updateMasterData, deleteMasterData
   } = useMasterData();
 
@@ -243,9 +255,32 @@ export default function MasterData() {
     if (id) deleteMasterData('master_rejections', id);
   };
 
+  // Casting Types
+  const handleAddCastingType = (item: any) => addMasterData('master_casting_types', item);
+  const handleEditCastingType = (item: any, index: number) => {
+    const id = castingTypes[index]?._id;
+    if (id) updateMasterData('master_casting_types', id, item);
+  };
+  const handleDeleteCastingType = (index: number) => {
+    const id = castingTypes[index]?._id;
+    if (id) deleteMasterData('master_casting_types', id);
+  };
+
   const dynamicRoutingColumns = routingColumns.map(col => {
-    if (col.accessor === 'process') {
-      return { ...col, options: processes.map(p => p.type) };
+    if (col.accessor === 'castingType') {
+      return { ...col, options: castingTypes.map(ct => ct.name) };
+    }
+    if (col.accessor === 'workshopId') {
+      return { ...col, options: workshops.map(w => w.name) };
+    }
+    if (col.accessor === 'productCategory') {
+      return { ...col, options: ['Bars', 'Bushings', 'Plates', 'Custom'] };
+    }
+    if (col.accessor === 'qcRequired') {
+      return { ...col, options: ['Yes', 'No'] };
+    }
+    if (col.accessor === 'skillLevel') {
+      return { ...col, options: ['Entry', 'Intermediate', 'Expert'] };
     }
     return col;
   });
@@ -295,6 +330,7 @@ export default function MasterData() {
           <Route path="/" element={<Navigate to="materials" replace />} />
           <Route path="materials" element={<DataTable columns={materialsColumns} data={materials} onAdd={handleAddMaterial} onEdit={handleEditMaterial} onDelete={handleDeleteMaterial} searchPlaceholder="Search Materials..." exportFileName="Materials" />} />
           <Route path="products" element={<DataTable columns={productsColumns} data={products} onAdd={handleAddProduct} onEdit={handleEditProduct} onDelete={handleDeleteProduct} searchPlaceholder="Search Products..." exportFileName="Products" />} />
+          <Route path="casting-types" element={<DataTable columns={castingTypesColumns} data={castingTypes} onAdd={handleAddCastingType} onEdit={handleEditCastingType} onDelete={handleDeleteCastingType} searchPlaceholder="Search Casting Types..." exportFileName="Casting Types" />} />
           <Route path="processes" element={<DataTable columns={processesColumns} data={processes} onAdd={handleAddProcess} onEdit={handleEditProcess} onDelete={handleDeleteProcess} searchPlaceholder="Search Processes..." exportFileName="Processes" />} />
           <Route path="status" element={<DataTable columns={statusColumns} data={status} onAdd={handleAddStatus} onEdit={handleEditStatus} onDelete={handleDeleteStatus} searchPlaceholder="Search Status Types..." exportFileName="Status Types" />} />
           <Route path="workshops" element={<DataTable columns={workshopsColumns} data={workshops} onAdd={handleAddWorkshop} onEdit={handleEditWorkshop} onDelete={handleDeleteWorkshop} searchPlaceholder="Search Workshops..." exportFileName="Workshops" />} />

@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { Factory, Play, Square, Save } from 'lucide-react';
 import { useWorkOrders } from '../context/WorkOrderContext';
+import { useMasterData } from '../context/MasterDataContext';
 import { useFirebase } from '../context/FirebaseContext';
 import { collection, addDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -14,14 +15,16 @@ const tabs = [
 
 function WorkshopRecord() {
   const { orders } = useWorkOrders();
+  const { workshops, machines, operators } = useMasterData();
   const { user } = useFirebase();
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     priority: '1',
-    workshop: 'Foundry A',
-    machine: 'Furnace F-01',
+    workshop: '',
+    machine: '',
     workorder: 'none',
-    operator: 'Ahmed Hassan',
+    stage: '',
+    operator: '',
     status: 'Under Process',
     startTime: '',
     endTime: '',
@@ -30,6 +33,33 @@ function WorkshopRecord() {
     qtyScrap: '',
     remarks: ''
   });
+
+  // Set initial values from master data
+  useEffect(() => {
+    if (workshops.length > 0 && !formData.workshop) {
+      setFormData(prev => ({ ...prev, workshop: workshops[0].name }));
+    }
+    if (machines.length > 0 && !formData.machine) {
+      setFormData(prev => ({ ...prev, machine: machines[0].name }));
+    }
+    if (operators.length > 0 && !formData.operator) {
+      setFormData(prev => ({ ...prev, operator: operators[0].name }));
+    }
+  }, [workshops, machines, operators]);
+
+  const selectedWO = useMemo(() => {
+    return orders.find(o => o.id === formData.workorder);
+  }, [orders, formData.workorder]);
+
+  // Set initial stage when workorder changes
+  useEffect(() => {
+    if (selectedWO && selectedWO.stages && selectedWO.stages.length > 0) {
+      const currentStage = selectedWO.stages.find((s: any) => s.status === 'current');
+      setFormData(prev => ({ ...prev, stage: currentStage ? currentStage.name : selectedWO.stages[0].name }));
+    } else {
+      setFormData(prev => ({ ...prev, stage: '' }));
+    }
+  }, [selectedWO]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -97,9 +127,16 @@ function WorkshopRecord() {
                 <label htmlFor="workshop" className="block text-sm font-medium text-gray-700">Workshop Name</label>
                 <div className="mt-1">
                   <select id="workshop" name="workshop" value={formData.workshop} onChange={handleChange} className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
-                    <option>Foundry A</option>
-                    <option>Foundry B</option>
-                    <option>Machining Shop</option>
+                    {workshops.map(w => (
+                      <option key={w._id} value={w.name}>{w.name}</option>
+                    ))}
+                    {workshops.length === 0 && (
+                      <>
+                        <option>Foundry A</option>
+                        <option>Foundry B</option>
+                        <option>Machining Shop</option>
+                      </>
+                    )}
                   </select>
                 </div>
               </div>
@@ -108,21 +145,43 @@ function WorkshopRecord() {
                 <label htmlFor="machine" className="block text-sm font-medium text-gray-700">Machine</label>
                 <div className="mt-1">
                   <select id="machine" name="machine" value={formData.machine} onChange={handleChange} className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
-                    <option>Furnace F-01</option>
-                    <option>Centrifugal C-02</option>
-                    <option>Lathe L-05</option>
+                    {machines.map(m => (
+                      <option key={m._id} value={m.name}>{m.name}</option>
+                    ))}
+                    {machines.length === 0 && (
+                      <>
+                        <option>Furnace F-01</option>
+                        <option>Centrifugal C-02</option>
+                        <option>Lathe L-05</option>
+                      </>
+                    )}
                   </select>
                 </div>
               </div>
 
-              <div className="sm:col-span-6">
+              <div className="sm:col-span-3">
                 <label htmlFor="workorder" className="block text-sm font-medium text-gray-700">Work Order</label>
                 <div className="mt-1">
                   <select id="workorder" name="workorder" value={formData.workorder} onChange={handleChange} className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
+                    <option value="none">None (Maintenance/Setup)</option>
                     {orders.map(wo => (
                       <option key={wo.id} value={wo.id}>{wo.id} - {wo.material} {wo.process}</option>
                     ))}
-                    <option value="none">None (Maintenance/Setup)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="sm:col-span-3">
+                <label htmlFor="stage" className="block text-sm font-medium text-gray-700">Stage</label>
+                <div className="mt-1">
+                  <select id="stage" name="stage" value={formData.stage} onChange={handleChange} className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
+                    {selectedWO && selectedWO.stages ? (
+                      selectedWO.stages.map((s: any) => (
+                        <option key={s.name} value={s.name}>{s.name}</option>
+                      ))
+                    ) : (
+                      <option value="">N/A</option>
+                    )}
                   </select>
                 </div>
               </div>
@@ -131,8 +190,15 @@ function WorkshopRecord() {
                 <label htmlFor="operator" className="block text-sm font-medium text-gray-700">Operator</label>
                 <div className="mt-1">
                   <select id="operator" name="operator" value={formData.operator} onChange={handleChange} className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
-                    <option>Ahmed Hassan</option>
-                    <option>Mohamed Ali</option>
+                    {operators.map(o => (
+                      <option key={o._id} value={o.name}>{o.name}</option>
+                    ))}
+                    {operators.length === 0 && (
+                      <>
+                        <option>Ahmed Hassan</option>
+                        <option>Mohamed Ali</option>
+                      </>
+                    )}
                   </select>
                 </div>
               </div>

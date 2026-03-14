@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { collection, onSnapshot, doc, setDoc, query } from 'firebase/firestore';
+import { collection, onSnapshot, doc, setDoc, query, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useFirebase } from './FirebaseContext';
 
@@ -25,6 +25,7 @@ export interface WorkOrder {
   aptDate?: string;
   productType?: string;
   authorId?: string;
+  routeId?: string;
 }
 
 interface WorkOrderContextType {
@@ -93,21 +94,42 @@ export const WorkOrderProvider = ({ children }: { children: React.ReactNode }) =
   const addOrders = async (newOrders: any[]) => {
     if (!user) return;
 
-    const formattedOrders = newOrders.map(order => ({
-      ...order,
-      authorId: user.uid,
-      stages: [
-        { name: 'Material Prep', status: 'current' },
-        { name: 'Furnace Melting', status: 'pending' },
-        { name: order.process || 'Casting', status: 'pending' },
-        { name: 'Cooling', status: 'pending' },
-        { name: 'Rough Machining', status: 'pending' },
-        { name: 'Final Machining', status: 'pending' },
-        { name: 'Inspection', status: 'pending' },
-      ]
-    }));
-
     try {
+      // Fetch routing master data to populate stages
+      const routingSnap = await getDocs(collection(db, 'master_routing'));
+      const allRouting: any[] = [];
+      routingSnap.forEach(doc => allRouting.push({ id: doc.id, ...doc.data() }));
+
+      const formattedOrders = newOrders.map(order => {
+        // Find routing stages for this order
+        // We look for routing entries that match the order's routeId or process/castingType
+        const orderRouting = allRouting
+          .filter(r => r.routeId === order.routeId || r.castingType === order.process)
+          .sort((a, b) => Number(a.stageNo) - Number(b.stageNo));
+
+        const stages = orderRouting.length > 0 
+          ? orderRouting.map((r, idx) => ({
+              name: r.stageName || r.process || 'Unknown Stage',
+              status: idx === 0 ? 'current' : 'pending' as 'completed' | 'current' | 'pending'
+            }))
+          : [
+              { name: 'Material Prep', status: 'current' as const },
+              { name: 'Furnace Melting', status: 'pending' as const },
+              { name: order.process || 'Casting', status: 'pending' as const },
+              { name: 'Cooling', status: 'pending' as const },
+              { name: 'Rough Machining', status: 'pending' as const },
+              { name: 'Final Machining', status: 'pending' as const },
+              { name: 'Inspection', status: 'pending' as const },
+            ];
+
+        return {
+          ...order,
+          authorId: user.uid,
+          stages,
+          stage: stages[0].name
+        };
+      });
+
       for (const order of formattedOrders) {
         await setDoc(doc(db, 'workOrders', order.id), order);
       }

@@ -4,6 +4,7 @@ import { cn } from '../lib/utils';
 import { Plus, Search, Download, Upload, Edit, Trash2, FileText, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useWorkOrders } from '../context/WorkOrderContext';
+import { useMasterData } from '../context/MasterDataContext';
 
 const tabs = [
   { name: 'Create Work Order', path: 'create' },
@@ -139,6 +140,7 @@ function OpenOrdersList({ orders }: { orders: any[] }) {
 
 function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => void }) {
   const navigate = useNavigate();
+  const { materials, castingTypes, routing } = useMasterData();
   const [header, setHeader] = useState({
     workOrderNo: '',
     priority: '1 - Normal',
@@ -245,6 +247,7 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => void }
         id: woId,
         material: line.material.split(' ')[0], // Get just the code part
         process: line.processType,
+        routeId: line.routing,
         dimensions: dimensions,
         qty: Number(line.quantity) || 1,
         weight: finalWeight,
@@ -385,8 +388,15 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => void }
                           onChange={(e) => handleLineChange(line.id, 'material', e.target.value)}
                           className="w-full border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 bg-white"
                         >
-                          <option>BRZ-01 (Bronze C93200)</option>
-                          <option>BRZ-02 (Alum Bronze)</option>
+                          {materials.map(m => (
+                            <option key={m._id} value={m.name}>{m.name}</option>
+                          ))}
+                          {materials.length === 0 && (
+                            <>
+                              <option>BRZ-01 (Bronze C93200)</option>
+                              <option>BRZ-02 (Alum Bronze)</option>
+                            </>
+                          )}
                         </select>
                       </div>
                       <div>
@@ -396,9 +406,16 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => void }
                           onChange={(e) => handleLineChange(line.id, 'processType', e.target.value)}
                           className="w-full border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 bg-white"
                         >
-                          <option>Continuous Casting</option>
-                          <option>Sand Casting</option>
-                          <option>Centrifugal</option>
+                          {castingTypes.map(ct => (
+                            <option key={ct._id} value={ct.name}>{ct.name}</option>
+                          ))}
+                          {castingTypes.length === 0 && (
+                            <>
+                              <option>Continuous Casting</option>
+                              <option>Sand Casting</option>
+                              <option>Centrifugal</option>
+                            </>
+                          )}
                         </select>
                       </div>
                       <div>
@@ -408,8 +425,16 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => void }
                           onChange={(e) => handleLineChange(line.id, 'routing', e.target.value)}
                           className="w-full border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 bg-white"
                         >
-                          <option>Standard Routing</option>
-                          <option>Custom Routing A</option>
+                          {/* Unique Route IDs */}
+                          {Array.from(new Set(routing.map(r => r.routeId))).map(routeId => (
+                            <option key={routeId} value={routeId}>{routeId}</option>
+                          ))}
+                          {routing.length === 0 && (
+                            <>
+                              <option>Standard Routing</option>
+                              <option>Custom Routing A</option>
+                            </>
+                          )}
                         </select>
                       </div>
                     </div>

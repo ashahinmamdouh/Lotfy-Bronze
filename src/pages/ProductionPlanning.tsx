@@ -12,7 +12,6 @@ const tabs = [
   { name: 'Work Order Execution', path: 'execution' },
   { name: 'Weekly Production Plan', path: 'weekly' },
   { name: 'Capacity Calculation', path: 'capacity' },
-  { name: 'Routing', path: 'routing' },
   { name: 'Gantt Chart', path: 'gantt' },
   { name: 'Planning Notification', path: 'notification' },
 ];
@@ -343,7 +342,6 @@ export default function ProductionPlanning() {
             <Route path="execution" element={<WorkOrderExecution />} />
             <Route path="weekly" element={<PlaceholderTab title="Weekly Production Plan" />} />
             <Route path="capacity" element={<PlaceholderTab title="Capacity Calculation" />} />
-            <Route path="routing" element={<PlaceholderTab title="Routing" />} />
             <Route path="gantt" element={<PlaceholderTab title="Gantt Chart" />} />
             <Route path="notification" element={<PlanningNotification />} />
           </Routes>
