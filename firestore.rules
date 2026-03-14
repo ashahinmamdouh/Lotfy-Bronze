@@ -116,9 +116,9 @@ service cloud.firestore {
     match /settings/{docId} { allow read: if true; allow write: if isAuthenticated(); }
 
     match /users/{docId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && (isAdmin() || resource.data.email == request.auth.token.email);
       allow create: if isAdmin();
-      allow update: if isAdmin() || (isOwner(docId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName']));
+      allow update: if isAdmin() || (isAuthenticated() && resource.data.email == request.auth.token.email && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName']));
       allow delete: if isAdmin();
     }
 

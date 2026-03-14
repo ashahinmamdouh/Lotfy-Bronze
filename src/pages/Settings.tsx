@@ -19,6 +19,7 @@ interface User {
   position: string;
   dept: string;
   role: string;
+  accessibleMenus?: string[];
 }
 
 enum OperationType {
@@ -59,7 +60,8 @@ function UserManagement() {
     email: '',
     position: '',
     dept: '',
-    role: 'User'
+    role: 'User',
+    accessibleMenus: [] as string[]
   });
 
   console.log('UserManagement render:', { isModalOpen, editingUser, usersCount: users.length });
@@ -111,7 +113,8 @@ function UserManagement() {
           email: user.email || '',
           position: user.position || '',
           dept: user.dept || '',
-          role: user.role || 'User'
+          role: user.role || 'User',
+          accessibleMenus: user.accessibleMenus || []
         });
       } else {
         setEditingUser(null);
@@ -120,7 +123,8 @@ function UserManagement() {
           email: '',
           position: '',
           dept: '',
-          role: 'User'
+          role: 'User',
+          accessibleMenus: []
         });
       }
       console.log('Setting isModalOpen to true');
@@ -189,6 +193,7 @@ function UserManagement() {
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Menus</th>
                     <th scope="col" className="relative px-6 py-3"><span className="sr-only">Actions</span></th>
                   </tr>
                 </thead>
@@ -208,6 +213,9 @@ function UserManagement() {
                         )}>
                           {user.role || 'User'}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {user.role === 'Admin' ? 'All' : (user.accessibleMenus?.length || 0)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
                         <button onClick={() => handleOpenModal(user)} className="text-indigo-600 hover:text-indigo-900">Edit</button>
@@ -318,6 +326,38 @@ function UserManagement() {
                   <option value="Manager">Manager</option>
                   <option value="User">User</option>
                 </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '4px' }}>Accessible Menus</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', maxHeight: '150px', overflowY: 'auto', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}>
+                  {[
+                    'Dashboard',
+                    'Master Data',
+                    'Work Orders',
+                    'Planning',
+                    'Execution',
+                    'Quality Control',
+                    'Inventory',
+                    'Over Time',
+                    'Reporting',
+                    'Settings'
+                  ].map(menu => (
+                    <label key={menu} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={formData.accessibleMenus.includes(menu)}
+                        onChange={(e) => {
+                          const newMenus = e.target.checked
+                            ? [...formData.accessibleMenus, menu]
+                            : formData.accessibleMenus.filter(m => m !== menu);
+                          setFormData({ ...formData, accessibleMenus: newMenus });
+                        }}
+                      />
+                      {menu}
+                    </label>
+                  ))}
+                </div>
               </div>
 
               <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>

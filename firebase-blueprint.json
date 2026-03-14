@@ -66,7 +66,13 @@
       "properties": {
         "email": { "type": "string", "format": "email" },
         "role": { "type": "string", "enum": ["Admin", "Manager", "User"] },
-        "displayName": { "type": "string" }
+        "displayName": { "type": "string" },
+        "position": { "type": "string" },
+        "dept": { "type": "string" },
+        "accessibleMenus": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
       },
       "required": ["email", "role"]
     }

@@ -17,7 +17,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useFirebase } from '../context/FirebaseContext';
 
@@ -38,6 +38,8 @@ export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [logo, setLogo] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState('Lotfy Bronze');
+  const [accessibleMenus, setAccessibleMenus] = useState<string[] | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const { logout, user } = useFirebase();
@@ -53,6 +55,41 @@ export default function Layout() {
 
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!user?.email) return;
+
+    // Check if default admin
+    if (user.email === 'a.shahin.mamdouh@gmail.com') {
+      setAccessibleMenus(navigation.map(n => n.name));
+      setUserRole('Admin');
+      return;
+    }
+
+    // Query users collection by email
+    const q = query(collection(db, 'users'), where('email', '==', user.email));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (!snapshot.empty) {
+        const userData = snapshot.docs[0].data();
+        setUserRole(userData.role);
+        if (userData.role === 'Admin') {
+          setAccessibleMenus(navigation.map(n => n.name));
+        } else {
+          setAccessibleMenus(userData.accessibleMenus || ['Dashboard']);
+        }
+      } else {
+        // Default for unknown users
+        setAccessibleMenus(['Dashboard']);
+        setUserRole('User');
+      }
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  const filteredNavigation = navigation.filter(item => 
+    accessibleMenus === null || accessibleMenus.includes(item.name)
+  );
 
   const handleLogout = async () => {
     try {
@@ -92,7 +129,7 @@ export default function Layout() {
           </div>
           <nav className="flex-1 overflow-y-auto py-4 custom-scrollbar">
             <ul className="space-y-1">
-              {navigation.map((item) => {
+              {filteredNavigation.map((item) => {
                 const isActive = location.pathname === item.href || (item.href !== '/' && location.pathname.startsWith(item.href));
                 return (
                   <li key={item.name}>
@@ -122,6 +159,7 @@ export default function Layout() {
               </div>
               <div className="flex-1">
                 <div className="text-sm font-medium text-white truncate max-w-[120px]">{user?.email || 'User'}</div>
+                <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{userRole || 'User'}</div>
               </div>
               <button onClick={handleLogout} className="text-gray-400 hover:text-white p-2">
                 <LogOut className="w-5 h-5" />
@@ -146,7 +184,7 @@ export default function Layout() {
         </div>
         <nav className="flex-1 overflow-y-auto py-6 custom-scrollbar">
           <ul className="space-y-1">
-            {navigation.map((item) => {
+            {filteredNavigation.map((item) => {
               const isActive = location.pathname === item.href || (item.href !== '/' && location.pathname.startsWith(item.href));
               return (
                 <li key={item.name}>
@@ -175,6 +213,7 @@ export default function Layout() {
             </div>
             <div className="flex-1">
               <div className="text-sm font-medium text-white truncate max-w-[120px]">{user?.email || 'User'}</div>
+              <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{userRole || 'User'}</div>
             </div>
             <button onClick={handleLogout} className="text-gray-400 hover:text-white p-2 transition-colors">
               <LogOut className="w-5 h-5" />
