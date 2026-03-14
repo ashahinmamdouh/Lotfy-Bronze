@@ -17,14 +17,23 @@ interface DataTableProps {
   onAdd?: (item: any) => void;
   onAddMultiple?: (items: any[]) => void;
   onEdit?: (item: any, index: number) => void;
-  onDelete?: (index: number) => void;
+  onDelete?: (item: any, index: number) => void;
 }
 
 export function DataTable({ columns, data, searchPlaceholder, exportFileName = "Data", onAdd, onAddMultiple, onEdit, onDelete }: DataTableProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [formData, setFormData] = useState<any>({});
+  const [searchTerm, setSearchTerm] = useState('');
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const filteredData = data.filter(item => {
+    if (!searchTerm) return true;
+    return columns.some(col => {
+      const value = item[col.accessor];
+      return value && String(value).toLowerCase().includes(searchTerm.toLowerCase());
+    });
+  });
 
   const handleOpenAdd = () => {
     setFormData({});
@@ -146,6 +155,8 @@ export function DataTable({ columns, data, searchPlaceholder, exportFileName = "
           </div>
           <input
             type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-none leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-black focus:border-black sm:text-sm"
             placeholder={searchPlaceholder || "Search..."}
           />
@@ -198,7 +209,7 @@ export function DataTable({ columns, data, searchPlaceholder, exportFileName = "
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-100">
-                  {data.map((item, idx) => (
+                  {filteredData.map((item, idx) => (
                     <tr key={idx} className="hover:bg-gray-50 transition-colors">
                       {columns.map((col, colIdx) => (
                         <td key={colIdx} className="px-6 py-5 whitespace-nowrap text-sm text-gray-900">
@@ -208,12 +219,12 @@ export function DataTable({ columns, data, searchPlaceholder, exportFileName = "
                       <td className="px-6 py-5 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end gap-3">
                           <button onClick={() => handleOpenEdit(item, idx)} className="text-gray-400 hover:text-black transition-colors"><Edit className="h-4 w-4" /></button>
-                          <button onClick={() => onDelete && onDelete(idx)} className="text-gray-400 hover:text-red-600 transition-colors"><Trash2 className="h-4 w-4" /></button>
+                          <button onClick={() => onDelete && onDelete(item, idx)} className="text-gray-400 hover:text-red-600 transition-colors"><Trash2 className="h-4 w-4" /></button>
                         </div>
                       </td>
                     </tr>
                   ))}
-                  {data.length === 0 && (
+                  {filteredData.length === 0 && (
                     <tr>
                       <td colSpan={columns.length + 1} className="px-6 py-8 text-center text-sm text-gray-500">
                         No records found.

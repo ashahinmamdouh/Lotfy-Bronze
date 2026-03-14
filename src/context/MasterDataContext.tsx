@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { collection, onSnapshot, doc, setDoc, deleteDoc, query } from 'firebase/firestore';
+import { collection, onSnapshot, doc, setDoc, deleteDoc, query, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useFirebase } from './FirebaseContext';
 
@@ -17,6 +17,7 @@ interface MasterDataContextType {
   castingTypes: any[];
   
   addMasterData: (collectionName: string, item: any) => Promise<void>;
+  addMultipleMasterData: (collectionName: string, items: any[]) => Promise<void>;
   updateMasterData: (collectionName: string, id: string, item: any) => Promise<void>;
   deleteMasterData: (collectionName: string, id: string) => Promise<void>;
 }
@@ -97,6 +98,21 @@ export const MasterDataProvider = ({ children }: { children: React.ReactNode }) 
     }
   };
 
+  const addMultipleMasterData = async (collectionName: string, items: any[]) => {
+    if (!user) return;
+    try {
+      const batch = writeBatch(db);
+      items.forEach(item => {
+        const docRef = doc(collection(db, collectionName));
+        batch.set(docRef, { ...item, authorId: user.uid });
+      });
+      await batch.commit();
+    } catch (error) {
+      console.error(`Error adding multiple to ${collectionName}:`, error);
+      throw error;
+    }
+  };
+
   const updateMasterData = async (collectionName: string, id: string, item: any) => {
     if (!user) return;
     try {
@@ -121,7 +137,7 @@ export const MasterDataProvider = ({ children }: { children: React.ReactNode }) 
   return (
     <MasterDataContext.Provider value={{
       materials, products, processes, status, workshops, operators, machines, molds, routing, rejections, castingTypes,
-      addMasterData, updateMasterData, deleteMasterData
+      addMasterData, addMultipleMasterData, updateMasterData, deleteMasterData
     }}>
       {children}
     </MasterDataContext.Provider>

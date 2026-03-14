@@ -142,127 +142,138 @@ function PlaceholderTab({ title }: { title: string }) {
 export default function MasterData() {
   const {
     materials, products, processes, status, workshops, operators, machines, molds, routing, rejections, castingTypes,
-    addMasterData, updateMasterData, deleteMasterData
+    addMasterData, addMultipleMasterData, updateMasterData, deleteMasterData
   } = useMasterData();
 
   // Materials
   const handleAddMaterial = (item: any) => addMasterData('master_materials', item);
-  const handleEditMaterial = (item: any, index: number) => {
-    const id = materials[index]?._id;
+  const handleUploadMaterials = (items: any[]) => addMultipleMasterData('master_materials', items);
+  const handleEditMaterial = (item: any) => {
+    const id = item._id;
     if (id) updateMasterData('master_materials', id, item);
   };
-  const handleDeleteMaterial = (index: number) => {
-    const id = materials[index]?._id;
+  const handleDeleteMaterial = (item: any) => {
+    const id = item._id;
     if (id) deleteMasterData('master_materials', id);
   };
 
   // Products
   const handleAddProduct = (item: any) => addMasterData('master_products', item);
-  const handleEditProduct = (item: any, index: number) => {
-    const id = products[index]?._id;
+  const handleUploadProducts = (items: any[]) => addMultipleMasterData('master_products', items);
+  const handleEditProduct = (item: any) => {
+    const id = item._id;
     if (id) updateMasterData('master_products', id, item);
   };
-  const handleDeleteProduct = (index: number) => {
-    const id = products[index]?._id;
+  const handleDeleteProduct = (item: any) => {
+    const id = item._id;
     if (id) deleteMasterData('master_products', id);
   };
 
   // Processes
   const handleAddProcess = (item: any) => addMasterData('master_processes', item);
-  const handleEditProcess = (item: any, index: number) => {
-    const id = processes[index]?._id;
+  const handleUploadProcesses = (items: any[]) => addMultipleMasterData('master_processes', items);
+  const handleEditProcess = (item: any) => {
+    const id = item._id;
     if (id) updateMasterData('master_processes', id, item);
   };
-  const handleDeleteProcess = (index: number) => {
-    const id = processes[index]?._id;
+  const handleDeleteProcess = (item: any) => {
+    const id = item._id;
     if (id) deleteMasterData('master_processes', id);
   };
 
   // Status
   const handleAddStatus = (item: any) => addMasterData('master_status', item);
-  const handleEditStatus = (item: any, index: number) => {
-    const id = status[index]?._id;
+  const handleUploadStatus = (items: any[]) => addMultipleMasterData('master_status', items);
+  const handleEditStatus = (item: any) => {
+    const id = item._id;
     if (id) updateMasterData('master_status', id, item);
   };
-  const handleDeleteStatus = (index: number) => {
-    const id = status[index]?._id;
+  const handleDeleteStatus = (item: any) => {
+    const id = item._id;
     if (id) deleteMasterData('master_status', id);
   };
 
   // Workshops
   const handleAddWorkshop = (item: any) => addMasterData('master_workshops', item);
-  const handleEditWorkshop = (item: any, index: number) => {
-    const id = workshops[index]?._id;
+  const handleUploadWorkshops = (items: any[]) => addMultipleMasterData('master_workshops', items);
+  const handleEditWorkshop = (item: any) => {
+    const id = item._id;
     if (id) updateMasterData('master_workshops', id, item);
   };
-  const handleDeleteWorkshop = (index: number) => {
-    const id = workshops[index]?._id;
+  const handleDeleteWorkshop = (item: any) => {
+    const id = item._id;
     if (id) deleteMasterData('master_workshops', id);
   };
 
   // Operators
   const handleAddOperator = (item: any) => addMasterData('master_operators', item);
-  const handleEditOperator = (item: any, index: number) => {
-    const id = operators[index]?._id;
+  const handleUploadOperators = (items: any[]) => addMultipleMasterData('master_operators', items);
+  const handleEditOperator = (item: any) => {
+    const id = item._id;
     if (id) updateMasterData('master_operators', id, item);
   };
-  const handleDeleteOperator = (index: number) => {
-    const id = operators[index]?._id;
+  const handleDeleteOperator = (item: any) => {
+    const id = item._id;
     if (id) deleteMasterData('master_operators', id);
   };
 
   // Machines
   const handleAddMachine = (item: any) => addMasterData('master_machines', item);
-  const handleEditMachine = (item: any, index: number) => {
-    const id = machines[index]?._id;
+  const handleUploadMachines = (items: any[]) => addMultipleMasterData('master_machines', items);
+  const handleEditMachine = (item: any) => {
+    const id = item._id;
     if (id) updateMasterData('master_machines', id, item);
   };
-  const handleDeleteMachine = (index: number) => {
-    const id = machines[index]?._id;
+  const handleDeleteMachine = (item: any) => {
+    const id = item._id;
     if (id) deleteMasterData('master_machines', id);
   };
 
   // Molds
   const handleAddMold = (item: any) => addMasterData('master_molds', item);
-  const handleEditMold = (item: any, index: number) => {
-    const id = molds[index]?._id;
+  const handleUploadMolds = (items: any[]) => addMultipleMasterData('master_molds', items);
+  const handleEditMold = (item: any) => {
+    const id = item._id;
     if (id) updateMasterData('master_molds', id, item);
   };
-  const handleDeleteMold = (index: number) => {
-    const id = molds[index]?._id;
+  const handleDeleteMold = (item: any) => {
+    const id = item._id;
     if (id) deleteMasterData('master_molds', id);
   };
 
   // Routing
   const handleAddRouting = (item: any) => addMasterData('master_routing', item);
-  const handleEditRouting = (item: any, index: number) => {
-    const id = routing[index]?._id;
+  const handleUploadRouting = (items: any[]) => addMultipleMasterData('master_routing', items);
+  const handleEditRouting = (item: any) => {
+    const id = item._id;
     if (id) updateMasterData('master_routing', id, item);
   };
-  const handleDeleteRouting = (index: number) => {
-    const id = routing[index]?._id;
+  const handleDeleteRouting = (item: any) => {
+    const id = item._id;
     if (id) deleteMasterData('master_routing', id);
   };
 
   // Rejections
   const handleAddRejection = (item: any) => addMasterData('master_rejections', item);
-  const handleEditRejection = (item: any, index: number) => {
-    const id = rejections[index]?._id;
+  const handleUploadRejections = (items: any[]) => addMultipleMasterData('master_rejections', items);
+  const handleEditRejection = (item: any) => {
+    const id = item._id;
     if (id) updateMasterData('master_rejections', id, item);
   };
-  const handleDeleteRejection = (index: number) => {
-    const id = rejections[index]?._id;
+  const handleDeleteRejection = (item: any) => {
+    const id = item._id;
     if (id) deleteMasterData('master_rejections', id);
   };
 
   // Casting Types
   const handleAddCastingType = (item: any) => addMasterData('master_casting_types', item);
-  const handleEditCastingType = (item: any, index: number) => {
-    const id = castingTypes[index]?._id;
+  const handleUploadCastingTypes = (items: any[]) => addMultipleMasterData('master_casting_types', items);
+  const handleEditCastingType = (item: any) => {
+    const id = item._id;
     if (id) updateMasterData('master_casting_types', id, item);
   };
-  const handleDeleteCastingType = (index: number) => {
-    const id = castingTypes[index]?._id;
+  const handleDeleteCastingType = (item: any) => {
+    const id = item._id;
     if (id) deleteMasterData('master_casting_types', id);
   };
 
@@ -328,17 +339,17 @@ export default function MasterData() {
       <div className="pt-2">
         <Routes>
           <Route path="/" element={<Navigate to="materials" replace />} />
-          <Route path="materials" element={<DataTable columns={materialsColumns} data={materials} onAdd={handleAddMaterial} onEdit={handleEditMaterial} onDelete={handleDeleteMaterial} searchPlaceholder="Search Materials..." exportFileName="Materials" />} />
-          <Route path="products" element={<DataTable columns={productsColumns} data={products} onAdd={handleAddProduct} onEdit={handleEditProduct} onDelete={handleDeleteProduct} searchPlaceholder="Search Products..." exportFileName="Products" />} />
-          <Route path="casting-types" element={<DataTable columns={castingTypesColumns} data={castingTypes} onAdd={handleAddCastingType} onEdit={handleEditCastingType} onDelete={handleDeleteCastingType} searchPlaceholder="Search Casting Types..." exportFileName="Casting Types" />} />
-          <Route path="processes" element={<DataTable columns={processesColumns} data={processes} onAdd={handleAddProcess} onEdit={handleEditProcess} onDelete={handleDeleteProcess} searchPlaceholder="Search Processes..." exportFileName="Processes" />} />
-          <Route path="status" element={<DataTable columns={statusColumns} data={status} onAdd={handleAddStatus} onEdit={handleEditStatus} onDelete={handleDeleteStatus} searchPlaceholder="Search Status Types..." exportFileName="Status Types" />} />
-          <Route path="workshops" element={<DataTable columns={workshopsColumns} data={workshops} onAdd={handleAddWorkshop} onEdit={handleEditWorkshop} onDelete={handleDeleteWorkshop} searchPlaceholder="Search Workshops..." exportFileName="Workshops" />} />
-          <Route path="operators" element={<DataTable columns={dynamicOperatorsColumns} data={operators} onAdd={handleAddOperator} onEdit={handleEditOperator} onDelete={handleDeleteOperator} searchPlaceholder="Search Operators..." exportFileName="Operators" />} />
-          <Route path="machines" element={<DataTable columns={dynamicMachinesColumns} data={machines} onAdd={handleAddMachine} onEdit={handleEditMachine} onDelete={handleDeleteMachine} searchPlaceholder="Search Machines..." exportFileName="Machines" />} />
-          <Route path="molds" element={<DataTable columns={moldsColumns} data={molds} onAdd={handleAddMold} onEdit={handleEditMold} onDelete={handleDeleteMold} searchPlaceholder="Search Molds..." exportFileName="Molds" />} />
-          <Route path="routing" element={<DataTable columns={dynamicRoutingColumns} data={routing} onAdd={handleAddRouting} onEdit={handleEditRouting} onDelete={handleDeleteRouting} searchPlaceholder="Search Routing..." exportFileName="Routing Master" />} />
-          <Route path="rejections" element={<DataTable columns={rejectionsColumns} data={rejections} onAdd={handleAddRejection} onEdit={handleEditRejection} onDelete={handleDeleteRejection} searchPlaceholder="Search Rejection Reasons..." exportFileName="Rejection Reasons" />} />
+          <Route path="materials" element={<DataTable columns={materialsColumns} data={materials} onAdd={handleAddMaterial} onAddMultiple={handleUploadMaterials} onEdit={handleEditMaterial} onDelete={handleDeleteMaterial} searchPlaceholder="Search Materials..." exportFileName="Materials" />} />
+          <Route path="products" element={<DataTable columns={productsColumns} data={products} onAdd={handleAddProduct} onAddMultiple={handleUploadProducts} onEdit={handleEditProduct} onDelete={handleDeleteProduct} searchPlaceholder="Search Products..." exportFileName="Products" />} />
+          <Route path="casting-types" element={<DataTable columns={castingTypesColumns} data={castingTypes} onAdd={handleAddCastingType} onAddMultiple={handleUploadCastingTypes} onEdit={handleEditCastingType} onDelete={handleDeleteCastingType} searchPlaceholder="Search Casting Types..." exportFileName="Casting Types" />} />
+          <Route path="processes" element={<DataTable columns={processesColumns} data={processes} onAdd={handleAddProcess} onAddMultiple={handleUploadProcesses} onEdit={handleEditProcess} onDelete={handleDeleteProcess} searchPlaceholder="Search Processes..." exportFileName="Processes" />} />
+          <Route path="status" element={<DataTable columns={statusColumns} data={status} onAdd={handleAddStatus} onAddMultiple={handleUploadStatus} onEdit={handleEditStatus} onDelete={handleDeleteStatus} searchPlaceholder="Search Status Types..." exportFileName="Status Types" />} />
+          <Route path="workshops" element={<DataTable columns={workshopsColumns} data={workshops} onAdd={handleAddWorkshop} onAddMultiple={handleUploadWorkshops} onEdit={handleEditWorkshop} onDelete={handleDeleteWorkshop} searchPlaceholder="Search Workshops..." exportFileName="Workshops" />} />
+          <Route path="operators" element={<DataTable columns={dynamicOperatorsColumns} data={operators} onAdd={handleAddOperator} onAddMultiple={handleUploadOperators} onEdit={handleEditOperator} onDelete={handleDeleteOperator} searchPlaceholder="Search Operators..." exportFileName="Operators" />} />
+          <Route path="machines" element={<DataTable columns={dynamicMachinesColumns} data={machines} onAdd={handleAddMachine} onAddMultiple={handleUploadMachines} onEdit={handleEditMachine} onDelete={handleDeleteMachine} searchPlaceholder="Search Machines..." exportFileName="Machines" />} />
+          <Route path="molds" element={<DataTable columns={moldsColumns} data={molds} onAdd={handleAddMold} onAddMultiple={handleUploadMolds} onEdit={handleEditMold} onDelete={handleDeleteMold} searchPlaceholder="Search Molds..." exportFileName="Molds" />} />
+          <Route path="routing" element={<DataTable columns={dynamicRoutingColumns} data={routing} onAdd={handleAddRouting} onAddMultiple={handleUploadRouting} onEdit={handleEditRouting} onDelete={handleDeleteRouting} searchPlaceholder="Search Routing..." exportFileName="Routing Master" />} />
+          <Route path="rejections" element={<DataTable columns={rejectionsColumns} data={rejections} onAdd={handleAddRejection} onAddMultiple={handleUploadRejections} onEdit={handleEditRejection} onDelete={handleDeleteRejection} searchPlaceholder="Search Rejection Reasons..." exportFileName="Rejection Reasons" />} />
         </Routes>
       </div>
     </div>
