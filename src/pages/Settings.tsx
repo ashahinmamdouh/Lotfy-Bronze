@@ -21,7 +21,36 @@ interface User {
   role: string;
 }
 
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string;
+    email?: string | null;
+    emailVerified?: boolean;
+    isAnonymous?: boolean;
+    tenantId?: string | null;
+    providerInfo: {
+      providerId: string;
+      displayName: string | null;
+      email: string | null;
+      photoUrl: string | null;
+    }[];
+  }
+}
+
 function UserManagement() {
+  const { user: authUser } = useFirebase();
   const [users, setUsers] = useState<User[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -33,6 +62,29 @@ function UserManagement() {
     role: 'User'
   });
 
+  const handleFirestoreError = (error: unknown, operationType: OperationType, path: string | null) => {
+    const errInfo: FirestoreErrorInfo = {
+      error: error instanceof Error ? error.message : String(error),
+      authInfo: {
+        userId: authUser?.uid,
+        email: authUser?.email,
+        emailVerified: authUser?.emailVerified,
+        isAnonymous: authUser?.isAnonymous,
+        tenantId: authUser?.tenantId,
+        providerInfo: authUser?.providerData.map(provider => ({
+          providerId: provider.providerId,
+          displayName: provider.displayName,
+          email: provider.email,
+          photoUrl: provider.photoURL
+        })) || []
+      },
+      operationType,
+      path
+    };
+    console.error('Firestore Error: ', JSON.stringify(errInfo));
+    alert(`Action failed: ${errInfo.error}`);
+  };
+
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
       const usersData = snapshot.docs.map(doc => ({
@@ -40,32 +92,38 @@ function UserManagement() {
         ...doc.data()
       })) as User[];
       setUsers(usersData);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'users');
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [authUser]);
 
   const handleOpenModal = (user?: User) => {
-    if (user) {
-      setEditingUser(user);
-      setFormData({
-        name: user.name,
-        email: user.email,
-        position: user.position || '',
-        dept: user.dept || '',
-        role: user.role || 'User'
-      });
-    } else {
-      setEditingUser(null);
-      setFormData({
-        name: '',
-        email: '',
-        position: '',
-        dept: '',
-        role: 'User'
-      });
+    try {
+      if (user) {
+        setEditingUser(user);
+        setFormData({
+          name: user.name || '',
+          email: user.email || '',
+          position: user.position || '',
+          dept: user.dept || '',
+          role: user.role || 'User'
+        });
+      } else {
+        setEditingUser(null);
+        setFormData({
+          name: '',
+          email: '',
+          position: '',
+          dept: '',
+          role: 'User'
+        });
+      }
+      setIsModalOpen(true);
+    } catch (err) {
+      console.error('Error opening modal:', err);
     }
-    setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
@@ -75,26 +133,26 @@ function UserManagement() {
 
   const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault();
+    const path = 'users';
     try {
       if (editingUser) {
-        await updateDoc(doc(db, 'users', editingUser.id), formData);
+        await updateDoc(doc(db, path, editingUser.id), formData);
       } else {
-        await addDoc(collection(db, 'users'), formData);
+        await addDoc(collection(db, path), formData);
       }
       handleCloseModal();
     } catch (error) {
-      console.error('Error saving user:', error);
-      alert('Failed to save user.');
+      handleFirestoreError(error, editingUser ? OperationType.UPDATE : OperationType.CREATE, path);
     }
   };
 
   const handleDeleteUser = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this user?')) {
+      const path = `users/${id}`;
       try {
         await deleteDoc(doc(db, 'users', id));
       } catch (error) {
-        console.error('Error deleting user:', error);
-        alert('Failed to delete user.');
+        handleFirestoreError(error, OperationType.DELETE, path);
       }
     }
   };

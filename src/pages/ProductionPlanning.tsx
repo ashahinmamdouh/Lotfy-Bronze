@@ -223,128 +223,75 @@ function PlanningNotification() {
   const canApprove = userRole === 'Admin' || userRole === 'Manager';
 
   return (
-    <div className="space-y-8">
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-medium text-gray-900 flex items-center">
-            <Bell className="h-5 w-5 mr-2 text-indigo-600" />
-            Pending Overtime Notifications
-          </h2>
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-            {pendingRequests.length} Pending
-          </span>
-        </div>
-
-        <div className="bg-white shadow overflow-hidden sm:rounded-md">
-          <ul className="divide-y divide-gray-200">
-            {pendingRequests.map((req) => (
-              <li key={req.id}>
-                <div className="px-4 py-4 sm:px-6 hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center justify-between">
-                    <div className="flex flex-col">
-                      <p className="text-sm font-medium text-indigo-600 truncate">
-                        {req.operator} ({req.operatorId})
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        Workshop: {req.workshop}
-                      </p>
-                    </div>
-                    <div className="ml-2 flex-shrink-0 flex">
-                      <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                        {req.hours} Hours
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-2 sm:flex sm:justify-between">
-                    <div className="sm:flex">
-                      <p className="flex items-center text-sm text-gray-500">
-                        <CalendarDays className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
-                        {req.date} | {req.timeFrom} - {req.timeTo}
-                      </p>
-                    </div>
-                    <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
-                      <p className="italic">Reason: {req.reason}</p>
-                    </div>
-                  </div>
-                  {canApprove && (
-                    <div className="mt-4 flex justify-end space-x-3">
-                      <button
-                        onClick={() => handleStatusChange(req.id, 'Rejected')}
-                        className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                      >
-                        <X className="h-4 w-4 mr-1 text-red-500" />
-                        Reject
-                      </button>
-                      <button
-                        onClick={() => handleStatusChange(req.id, 'Approved')}
-                        className="inline-flex items-center px-3 py-1.5 border border-transparent shadow-sm text-xs font-medium rounded text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                      >
-                        <Check className="h-4 w-4 mr-1" />
-                        Approve
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </li>
-            ))}
-            {pendingRequests.length === 0 && (
-              <li className="px-4 py-12 text-center text-gray-500 italic">
-                No pending overtime requests at the moment.
-              </li>
-            )}
-          </ul>
-        </div>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-medium text-gray-900 flex items-center">
+          <Bell className="h-5 w-5 mr-2 text-indigo-600" />
+          Pending Overtime Notifications
+        </h2>
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+          {pendingRequests.length} Pending
+        </span>
       </div>
 
-      {/* Recent History Section */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-medium text-gray-900 flex items-center">
-            <Clock className="h-5 w-5 mr-2 text-gray-500" />
-            Recent History (Last 5)
-          </h2>
-        </div>
-
-        <div className="bg-white shadow overflow-hidden sm:rounded-md border border-gray-100">
-          <ul className="divide-y divide-gray-200">
-            {processedRequests.map((req) => (
-              <li key={req.id}>
-                <div className="px-4 py-3 sm:px-6 bg-gray-50/50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex flex-col">
-                      <p className="text-sm font-medium text-gray-900">
-                        {req.operator}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {req.date} | {req.hours}h
-                      </p>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                      <div className="text-right">
-                        <p className="text-xs text-gray-400">Processed by</p>
-                        <p className="text-xs font-medium text-gray-600">{req.processedBy || 'System'}</p>
-                      </div>
-                      <span className={cn(
-                        "px-2.5 py-0.5 rounded-full text-xs font-medium",
-                        req.status === 'Approved' ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                      )}>
-                        {req.status}
-                      </span>
-                    </div>
+      <div className="bg-white shadow overflow-hidden sm:rounded-md">
+        <ul className="divide-y divide-gray-200">
+          {pendingRequests.map((req) => (
+            <li key={req.id}>
+              <div className="px-4 py-4 sm:px-6 hover:bg-gray-50 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div className="flex flex-col">
+                    <p className="text-sm font-medium text-indigo-600 truncate">
+                      {req.operator} ({req.operatorId})
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Workshop: {req.workshop}
+                    </p>
+                  </div>
+                  <div className="ml-2 flex-shrink-0 flex">
+                    <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                      {req.hours} Hours
+                    </p>
                   </div>
                 </div>
-              </li>
-            ))}
-            {processedRequests.length === 0 && (
-              <li className="px-4 py-6 text-center text-gray-400 text-sm italic">
-                No processed requests yet.
-              </li>
-            )}
-          </ul>
-        </div>
-        <p className="text-xs text-gray-500 italic text-right">
-          Full history is available in the Overtime Management module.
-        </p>
+                <div className="mt-2 sm:flex sm:justify-between">
+                  <div className="sm:flex">
+                    <p className="flex items-center text-sm text-gray-500">
+                      <CalendarDays className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
+                      {req.date} | {req.timeFrom} - {req.timeTo}
+                    </p>
+                  </div>
+                  <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
+                    <p className="italic">Reason: {req.reason}</p>
+                  </div>
+                </div>
+                {canApprove && (
+                  <div className="mt-4 flex justify-end space-x-3">
+                    <button
+                      onClick={() => handleStatusChange(req.id, 'Rejected')}
+                      className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    >
+                      <X className="h-4 w-4 mr-1 text-red-500" />
+                      Reject
+                    </button>
+                    <button
+                      onClick={() => handleStatusChange(req.id, 'Approved')}
+                      className="inline-flex items-center px-3 py-1.5 border border-transparent shadow-sm text-xs font-medium rounded text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                    >
+                      <Check className="h-4 w-4 mr-1" />
+                      Approve
+                    </button>
+                  </div>
+                )}
+              </div>
+            </li>
+          ))}
+          {pendingRequests.length === 0 && (
+            <li className="px-4 py-12 text-center text-gray-500 italic">
+              No pending overtime requests at the moment.
+            </li>
+          )}
+        </ul>
       </div>
     </div>
   );
