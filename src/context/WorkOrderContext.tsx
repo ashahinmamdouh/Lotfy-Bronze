@@ -102,21 +102,9 @@ export const WorkOrderProvider = ({ children }: { children: React.ReactNode }) =
       routingSnap.forEach(doc => allRouting.push({ id: doc.id, ...doc.data() }));
 
       const formattedOrders = newOrders.map(order => {
-        // Find routing stages for this order
-        // If routeId is not provided, find the first routing that matches the processType
-        let targetRouteId = order.routeId;
-        if (!targetRouteId && order.process) {
-          const matchingRoute = allRouting.find(r => r.processType === order.process);
-          if (matchingRoute) {
-            targetRouteId = matchingRoute.routeId;
-          }
-        }
-
+        // Find all routing stages that match the process type of the order
         const orderRouting = allRouting
-          .filter(r => {
-            if (targetRouteId) return r.routeId === targetRouteId;
-            return r.processType === order.process;
-          })
+          .filter(r => r.processType === order.process)
           .sort((a, b) => Number(a.stageNo) - Number(b.stageNo));
 
         const stages = orderRouting.length > 0 
@@ -138,8 +126,7 @@ export const WorkOrderProvider = ({ children }: { children: React.ReactNode }) =
           ...order,
           authorId: user.uid,
           stages,
-          stage: stages[0].name,
-          routeId: targetRouteId
+          stage: stages[0].name
         };
       });
 
