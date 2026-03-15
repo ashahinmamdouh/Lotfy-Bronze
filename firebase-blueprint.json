@@ -24,6 +24,7 @@
         "qualityStatus": { "type": "string" },
         "aptDate": { "type": "string" },
         "productType": { "type": "string" },
+        "woDate": { "type": "string" },
         "stages": {
           "type": "array",
           "items": {

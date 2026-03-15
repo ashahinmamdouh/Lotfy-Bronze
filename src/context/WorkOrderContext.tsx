@@ -26,6 +26,7 @@ export interface WorkOrder {
   productType?: string;
   authorId?: string;
   routeId?: string;
+  woDate?: string;
 }
 
 interface WorkOrderContextType {
@@ -102,9 +103,20 @@ export const WorkOrderProvider = ({ children }: { children: React.ReactNode }) =
 
       const formattedOrders = newOrders.map(order => {
         // Find routing stages for this order
-        // We look for routing entries that match the order's routeId or process/castingType
+        // If routeId is not provided, find the first routing that matches the processType
+        let targetRouteId = order.routeId;
+        if (!targetRouteId && order.process) {
+          const matchingRoute = allRouting.find(r => r.processType === order.process);
+          if (matchingRoute) {
+            targetRouteId = matchingRoute.routeId;
+          }
+        }
+
         const orderRouting = allRouting
-          .filter(r => r.routeId === order.routeId || r.processType === order.process)
+          .filter(r => {
+            if (targetRouteId) return r.routeId === targetRouteId;
+            return r.processType === order.process;
+          })
           .sort((a, b) => Number(a.stageNo) - Number(b.stageNo));
 
         const stages = orderRouting.length > 0 
@@ -126,7 +138,8 @@ export const WorkOrderProvider = ({ children }: { children: React.ReactNode }) =
           ...order,
           authorId: user.uid,
           stages,
-          stage: stages[0].name
+          stage: stages[0].name,
+          routeId: targetRouteId
         };
       });
 

@@ -94,6 +94,7 @@ function OpenOrdersList({ orders }: { orders: any[] }) {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">WO Date</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">WO No</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Material</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Process</th>
@@ -107,6 +108,7 @@ function OpenOrdersList({ orders }: { orders: any[] }) {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredOrders.map((order) => (
                     <tr key={order.id}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.woDate || order.start}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-indigo-600">{order.id}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.material}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.process}</td>
@@ -142,6 +144,7 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => void }
   const navigate = useNavigate();
   const { materials, processes, routing } = useMasterData();
   const [header, setHeader] = useState({
+    woDate: new Date().toISOString().split('T')[0],
     workOrderNo: '',
     priority: '1 - Normal',
     startDate: '',
@@ -154,7 +157,6 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => void }
     product: 'Bars',
     material: 'BRZ-01 (Bronze C93200)',
     processType: 'Continuous Casting',
-    routing: 'Standard Routing',
     od: '',
     innerId: '',
     length: '',
@@ -179,7 +181,6 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => void }
       product: 'Bars',
       material: 'BRZ-01 (Bronze C93200)',
       processType: 'Continuous Casting',
-      routing: 'Standard Routing',
       od: '',
       innerId: '',
       length: '',
@@ -245,9 +246,9 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => void }
       
       return {
         id: woId,
+        woDate: header.woDate,
         material: line.material.split(' ')[0], // Get just the code part
         process: line.processType,
-        routeId: line.routing,
         dimensions: dimensions,
         qty: Number(line.quantity) || 1,
         weight: finalWeight,
@@ -276,6 +277,16 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => void }
           <h2 className="text-2xl sm:text-3xl font-serif italic text-gray-900 mb-6 border-b border-gray-200 pb-4">Order Header</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">WO Date</label>
+              <input 
+                type="date" 
+                name="woDate"
+                value={header.woDate}
+                onChange={handleHeaderChange}
+                className="w-full border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900"
+              />
+            </div>
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Work Order No</label>
               <input 
@@ -414,25 +425,6 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => void }
                               <option>Continuous Casting</option>
                               <option>Sand Casting</option>
                               <option>Centrifugal</option>
-                            </>
-                          )}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Routing</label>
-                        <select 
-                          value={line.routing}
-                          onChange={(e) => handleLineChange(line.id, 'routing', e.target.value)}
-                          className="w-full border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 bg-white"
-                        >
-                          {/* Unique Route IDs */}
-                          {Array.from(new Set(routing.map(r => r.routeId))).map(routeId => (
-                            <option key={routeId} value={routeId}>{routeId}</option>
-                          ))}
-                          {routing.length === 0 && (
-                            <>
-                              <option>Standard Routing</option>
-                              <option>Custom Routing A</option>
                             </>
                           )}
                         </select>
@@ -614,7 +606,7 @@ function WorkOrderHistory({ orders }: { orders: any[] }) {
     }
 
     const exportData = filteredOrders.map(order => ({
-      'Creation Date': order.createdAt || order.start,
+      'WO Date': order.woDate || order.createdAt || order.start,
       'Work Order Number': order.id,
       'Product Type': order.productType || '-',
       'Start Date': order.start,
@@ -697,7 +689,7 @@ function WorkOrderHistory({ orders }: { orders: any[] }) {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Creation Date</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">WO Date</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">WO No</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product Type</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Date</th>
@@ -721,7 +713,7 @@ function WorkOrderHistory({ orders }: { orders: any[] }) {
                     const delayDays = calculateDelay(order.due, order.deliveryDate, order.status);
                     return (
                       <tr key={order.id}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.createdAt || order.start}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.woDate || order.createdAt || order.start}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-indigo-600">{order.id}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.productType || '-'}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.start}</td>
