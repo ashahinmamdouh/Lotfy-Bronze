@@ -104,12 +104,12 @@ export const WorkOrderProvider = ({ children }: { children: React.ReactNode }) =
         // Find routing stages for this order
         // We look for routing entries that match the order's routeId or process/castingType
         const orderRouting = allRouting
-          .filter(r => r.routeId === order.routeId || r.castingType === order.process)
+          .filter(r => r.routeId === order.routeId || r.processType === order.process)
           .sort((a, b) => Number(a.stageNo) - Number(b.stageNo));
 
         const stages = orderRouting.length > 0 
           ? orderRouting.map((r, idx) => ({
-              name: r.stageName || r.process || 'Unknown Stage',
+              name: r.stageName || r.processType || 'Unknown Stage',
               status: idx === 0 ? 'current' : 'pending' as 'completed' | 'current' | 'pending'
             }))
           : [

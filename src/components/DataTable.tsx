@@ -25,6 +25,8 @@ export function DataTable({ columns, data, searchPlaceholder, exportFileName = "
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [formData, setFormData] = useState<any>({});
   const [searchTerm, setSearchTerm] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const filteredData = data.filter(item => {
@@ -38,12 +40,14 @@ export function DataTable({ columns, data, searchPlaceholder, exportFileName = "
   const handleOpenAdd = () => {
     setFormData({});
     setEditingIndex(null);
+    setError(null);
     setIsModalOpen(true);
   };
 
   const handleOpenEdit = (item: any, index: number) => {
     setFormData({ ...item });
     setEditingIndex(index);
+    setError(null);
     setIsModalOpen(true);
   };
 
@@ -51,15 +55,26 @@ export function DataTable({ columns, data, searchPlaceholder, exportFileName = "
     setIsModalOpen(false);
     setFormData({});
     setEditingIndex(null);
+    setError(null);
+    setIsSaving(false);
   };
 
-  const handleSave = () => {
-    if (editingIndex !== null && onEdit) {
-      onEdit(formData, editingIndex);
-    } else if (onAdd) {
-      onAdd(formData);
+  const handleSave = async () => {
+    setIsSaving(true);
+    setError(null);
+    try {
+      if (editingIndex !== null && onEdit) {
+        await onEdit(formData, editingIndex);
+      } else if (onAdd) {
+        await onAdd(formData);
+      }
+      handleCloseModal();
+    } catch (err: any) {
+      console.error('Save error:', err);
+      setError(err.message || 'Failed to save record. Please try again.');
+    } finally {
+      setIsSaving(false);
     }
-    handleCloseModal();
   };
 
   const handleChange = (accessor: string, value: string) => {
@@ -250,6 +265,11 @@ export function DataTable({ columns, data, searchPlaceholder, exportFileName = "
               </button>
             </div>
             <div className="space-y-4 overflow-y-auto pr-2 custom-scrollbar">
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-none">
+                  {error}
+                </div>
+              )}
               {columns.map((col) => (
                 <div key={col.accessor}>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -260,6 +280,7 @@ export function DataTable({ columns, data, searchPlaceholder, exportFileName = "
                       value={formData[col.accessor] || ''}
                       onChange={(e) => handleChange(col.accessor, e.target.value)}
                       className="block w-full px-3 py-2 border border-gray-300 rounded-none shadow-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black sm:text-sm"
+                      disabled={isSaving}
                     >
                       <option value="">Select {col.header}</option>
                       {col.options.map((opt, i) => (
@@ -272,6 +293,7 @@ export function DataTable({ columns, data, searchPlaceholder, exportFileName = "
                       value={formData[col.accessor] || ''}
                       onChange={(e) => handleChange(col.accessor, e.target.value)}
                       className="block w-full px-3 py-2 border border-gray-300 rounded-none shadow-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black sm:text-sm"
+                      disabled={isSaving}
                     />
                   )}
                 </div>
@@ -281,14 +303,23 @@ export function DataTable({ columns, data, searchPlaceholder, exportFileName = "
               <button
                 onClick={handleCloseModal}
                 className="px-4 py-2 border border-gray-300 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black"
+                disabled={isSaving}
               >
                 Cancel
               </button>
               <button
                 onClick={handleSave}
-                className="px-4 py-2 border border-transparent text-sm font-medium text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black"
+                className="px-4 py-2 border border-transparent text-sm font-medium text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black flex items-center gap-2"
+                disabled={isSaving}
               >
-                Save
+                {isSaving ? (
+                  <>
+                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Saving...
+                  </>
+                ) : (
+                  editingIndex !== null ? 'Update' : 'Save'
+                )}
               </button>
             </div>
           </div>

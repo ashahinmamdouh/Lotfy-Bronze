@@ -140,7 +140,7 @@ function OpenOrdersList({ orders }: { orders: any[] }) {
 
 function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => void }) {
   const navigate = useNavigate();
-  const { materials, castingTypes, routing } = useMasterData();
+  const { materials, processes, routing } = useMasterData();
   const [header, setHeader] = useState({
     workOrderNo: '',
     priority: '1 - Normal',
@@ -406,10 +406,10 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => void }
                           onChange={(e) => handleLineChange(line.id, 'processType', e.target.value)}
                           className="w-full border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 bg-white"
                         >
-                          {castingTypes.map(ct => (
-                            <option key={ct._id} value={ct.name}>{ct.name}</option>
+                          {processes.map(p => (
+                            <option key={p._id} value={p.type}>{p.type}</option>
                           ))}
-                          {castingTypes.length === 0 && (
+                          {processes.length === 0 && (
                             <>
                               <option>Continuous Casting</option>
                               <option>Sand Casting</option>

@@ -98,7 +98,27 @@
     "master_operators": { "schema": { "type": "object" }, "description": "Master data for operators" },
     "master_machines": { "schema": { "type": "object" }, "description": "Master data for machines" },
     "master_molds": { "schema": { "type": "object" }, "description": "Master data for molds" },
-    "master_routing": { "schema": { "type": "object" }, "description": "Master data for routing" },
+    "master_routing": {
+      "schema": {
+        "type": "object",
+        "properties": {
+          "routeId": { "type": "string" },
+          "processType": { "type": "string" },
+          "stageNo": { "type": "string" },
+          "workshopId": { "type": "string" },
+          "nextStage": { "type": "string" },
+          "stageName": { "type": "string" },
+          "productCategory": { "type": "string" },
+          "stdTime": { "type": "string" },
+          "operatorsRequired": { "type": "string" },
+          "qcRequired": { "type": "string" },
+          "skillLevel": { "type": "string" },
+          "notes": { "type": "string" },
+          "authorId": { "type": "string" }
+        }
+      },
+      "description": "Master data for routing"
+    },
     "master_rejections": { "schema": { "type": "object" }, "description": "Master data for rejection reasons" },
     "master_casting_types": { "schema": { "type": "object" }, "description": "Master data for casting types" },
     "workshop_records": { "schema": { "type": "object" }, "description": "Records of workshop execution activities" },

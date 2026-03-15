@@ -103,15 +103,15 @@ const moldsColumns: Column[] = [
 // Routing Master
 const routingColumns: Column[] = [
   { header: 'Route ID', accessor: 'routeId' },
-  { header: 'Casting Type', accessor: 'castingType' },
+  { header: 'Process Type', accessor: 'processType' },
   { header: 'Stage No', accessor: 'stageNo' },
-  { header: 'Workshop ID', accessor: 'workshopId' },
+  { header: 'WorkshopID', accessor: 'workshopId' },
   { header: 'Next Stage', accessor: 'nextStage' },
   { header: 'Stage Name', accessor: 'stageName' },
   { header: 'Product Category', accessor: 'productCategory' },
   { header: 'Std Time (min/unit)', accessor: 'stdTime' },
   { header: 'Operators Required', accessor: 'operatorsRequired' },
-  { header: 'QC Required', accessor: 'qcRequired' },
+  { header: 'QC_Required', accessor: 'qcRequired' },
   { header: 'Skill Level', accessor: 'skillLevel' },
   { header: 'Notes', accessor: 'notes' },
 ];
@@ -278,8 +278,8 @@ export default function MasterData() {
   };
 
   const dynamicRoutingColumns = routingColumns.map(col => {
-    if (col.accessor === 'castingType') {
-      return { ...col, options: castingTypes.map(ct => ct.name) };
+    if (col.accessor === 'processType') {
+      return { ...col, options: processes.map(p => p.type) };
     }
     if (col.accessor === 'workshopId') {
       return { ...col, options: workshops.map(w => w.name) };
