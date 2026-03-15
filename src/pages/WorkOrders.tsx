@@ -198,6 +198,63 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => void }
     }
   };
 
+  const handleDownloadTemplate = () => {
+    const templateData = [
+      {
+        'Product': 'Bars',
+        'Material': 'BRZ-01 (Bronze C93200)',
+        'Process Type': 'Continuous Casting',
+        'OD (MM)': 50,
+        'ID (MM)': 0,
+        'Length (MM)': 500,
+        'Quantity': 10,
+        'Mold #': '',
+        'Dimension Notes': '',
+        'Comment Notes': '',
+        'Approx Weight (KG)': 8.5
+      }
+    ];
+
+    const worksheet = XLSX.utils.json_to_sheet(templateData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "WO_Lines_Template");
+    XLSX.writeFile(workbook, "WO_Lines_Template.xlsx");
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const bstr = evt.target?.result;
+      const wb = XLSX.read(bstr, { type: 'binary' });
+      const wsname = wb.SheetNames[0];
+      const ws = wb.Sheets[wsname];
+      const data = XLSX.utils.sheet_to_json(ws);
+
+      const newLines = data.map((row: any) => ({
+        id: crypto.randomUUID(),
+        product: row['Product'] || 'Bars',
+        material: row['Material'] || 'BRZ-01 (Bronze C93200)',
+        processType: row['Process Type'] || 'Continuous Casting',
+        od: String(row['OD (MM)'] || ''),
+        innerId: String(row['ID (MM)'] || ''),
+        length: String(row['Length (MM)'] || ''),
+        quantity: String(row['Quantity'] || '1'),
+        mold: String(row['Mold #'] || ''),
+        approxWeight: String(row['Approx Weight (KG)'] || ''),
+        dimensionNotes: String(row['Dimension Notes'] || ''),
+        commentNotes: String(row['Comment Notes'] || ''),
+      }));
+
+      if (newLines.length > 0) {
+        setLines(newLines);
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
+
   const calculateWeight = (line: any) => {
     const density = 0.0000088; // kg/mm³ for Bronze
     let volume = 0;
@@ -349,12 +406,22 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => void }
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 border-b border-gray-200 pb-4">
             <h2 className="text-2xl sm:text-3xl font-serif italic text-gray-900">Order Lines</h2>
             <div className="flex flex-wrap gap-2 sm:gap-3">
-              <button type="button" className="flex items-center gap-2 px-3 sm:px-4 py-2 border border-gray-900 text-xs sm:text-sm font-bold tracking-wider uppercase hover:bg-gray-100 transition-colors">
+              <button 
+                type="button" 
+                onClick={handleDownloadTemplate}
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 border border-gray-900 text-xs sm:text-sm font-bold tracking-wider uppercase hover:bg-gray-100 transition-colors"
+              >
                 <Download className="w-4 h-4" /> <span className="hidden sm:inline">Template</span>
               </button>
-              <button type="button" className="flex items-center gap-2 px-3 sm:px-4 py-2 border border-gray-900 text-xs sm:text-sm font-bold tracking-wider uppercase hover:bg-gray-100 transition-colors">
+              <label className="flex items-center gap-2 px-3 sm:px-4 py-2 border border-gray-900 text-xs sm:text-sm font-bold tracking-wider uppercase hover:bg-gray-100 transition-colors cursor-pointer">
                 <Upload className="w-4 h-4" /> <span className="hidden sm:inline">Upload Excel</span>
-              </button>
+                <input 
+                  type="file" 
+                  className="hidden" 
+                  accept=".xlsx, .xls" 
+                  onChange={handleFileUpload}
+                />
+              </label>
               <button type="button" onClick={addLine} className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-[#141414] text-white text-xs sm:text-sm font-bold tracking-wider uppercase hover:bg-black transition-colors">
                 <Plus className="w-4 h-4" /> Add Line
               </button>
