@@ -54,7 +54,9 @@ service cloud.firestore {
              data.material is string && data.material.size() > 0 && data.material.size() < 100 &&
              data.qty is number && data.qty > 0 &&
              data.weight is number && data.weight >= 0 &&
-             data.authorId is string && data.authorId.size() > 0;
+             data.authorId is string && data.authorId.size() > 0 &&
+             (!('fullName' in data) || (data.fullName is string && data.fullName.size() < 500)) &&
+             (!('moldNo' in data) || (data.moldNo is string && data.moldNo.size() < 100));
     }
 
     match /test/connection {

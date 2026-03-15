@@ -27,6 +27,8 @@ export interface WorkOrder {
   authorId?: string;
   routeId?: string;
   woDate?: string;
+  fullName?: string;
+  moldNo?: string;
 }
 
 interface WorkOrderContextType {
@@ -123,11 +125,24 @@ export const WorkOrderProvider = ({ children }: { children: React.ReactNode }) =
               { name: 'Inspection', status: 'pending' as const },
             ];
 
+        // Generate Full Name: WO No, Material, Dimension, Quantity, Mold No
+        const fullNameParts = [
+          order.id,
+          order.material,
+          order.dimensions,
+          order.qty?.toString(),
+          order.moldNo || order.mold
+        ].filter(part => part && part.toString().trim() !== '');
+
+        const fullName = fullNameParts.join(', ');
+
         return {
           ...order,
           authorId: user.uid,
           stages,
-          stage: stages[0].name
+          stage: stages[0].name,
+          fullName,
+          moldNo: order.moldNo || order.mold
         };
       });
 

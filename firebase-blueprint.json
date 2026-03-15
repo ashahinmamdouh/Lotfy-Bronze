@@ -25,6 +25,8 @@
         "aptDate": { "type": "string" },
         "productType": { "type": "string" },
         "woDate": { "type": "string" },
+        "fullName": { "type": "string" },
+        "moldNo": { "type": "string" },
         "stages": {
           "type": "array",
           "items": {

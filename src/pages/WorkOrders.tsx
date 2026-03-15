@@ -20,7 +20,8 @@ function OpenOrdersList({ orders }: { orders: any[] }) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const filteredOrders = orders.filter(order => {
-    const matchId = order.id.toLowerCase().includes(searchId.toLowerCase());
+    const matchId = order.id.toLowerCase().includes(searchId.toLowerCase()) || 
+                    (order.fullName && order.fullName.toLowerCase().includes(searchId.toLowerCase()));
     const matchMaterial = order.material.toLowerCase().includes(searchMaterial.toLowerCase());
     const matchStatus = searchStatus === '' || order.status === searchStatus;
     return matchId && matchMaterial && matchStatus;
@@ -141,6 +142,7 @@ function OpenOrdersList({ orders }: { orders: any[] }) {
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">WO Date</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">WO No</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Full Name</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Material</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Process</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dimensions</th>
@@ -163,6 +165,7 @@ function OpenOrdersList({ orders }: { orders: any[] }) {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.woDate || order.start}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-indigo-600">{order.id}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 max-w-xs truncate" title={order.fullName}>{order.fullName}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.material}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.process}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.dimensions}</td>
@@ -709,14 +712,15 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => Promis
 }
 
 function WorkOrderHistory({ orders }: { orders: any[] }) {
-  const { deleteMultipleOrders } = useWorkOrders();
+  const { deleteMultipleOrders, addOrders } = useWorkOrders();
   const [searchId, setSearchId] = useState('');
   const [searchMaterial, setSearchMaterial] = useState('');
   const [searchStatus, setSearchStatus] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const filteredOrders = orders.filter(order => {
-    const matchId = order.id.toLowerCase().includes(searchId.toLowerCase());
+    const matchId = order.id.toLowerCase().includes(searchId.toLowerCase()) || 
+                    (order.fullName && order.fullName.toLowerCase().includes(searchId.toLowerCase()));
     const matchMaterial = order.material.toLowerCase().includes(searchMaterial.toLowerCase());
     const matchStatus = searchStatus === '' || order.status === searchStatus;
     return matchId && matchMaterial && matchStatus;
@@ -799,6 +803,7 @@ function WorkOrderHistory({ orders }: { orders: any[] }) {
     const exportData = filteredOrders.map(order => ({
       'WO Date': order.woDate || order.createdAt || order.start,
       'Work Order Number': order.id,
+      'Full Name': order.fullName,
       'Product Type': order.productType || '-',
       'Start Date': order.start,
       'Due Date': order.due,
@@ -820,6 +825,71 @@ function WorkOrderHistory({ orders }: { orders: any[] }) {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Work Order History");
     XLSX.writeFile(workbook, "work_order_history.xlsx");
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const bstr = evt.target?.result;
+      const wb = XLSX.read(bstr, { type: 'binary' });
+      const wsname = wb.SheetNames[0];
+      const ws = wb.Sheets[wsname];
+      const data = XLSX.utils.sheet_to_json(ws);
+
+      const newOrders = data.map((row: any) => {
+        const id = String(row['Work Order Number'] || row['WO No'] || crypto.randomUUID());
+        const material = row['Material'] || '-';
+        const dimensions = row['Dimensions'] || '-';
+        const qty = Number(row['Quantity'] || row['Qty'] || 1);
+        const mold = row['Mold #'] || row['Mold No'] || '';
+        
+        // Generate Full Name: WO No, Material, Dimension, Quantity, Mold No
+        const fullNameParts = [
+          id,
+          material,
+          dimensions,
+          qty.toString(),
+          mold
+        ].filter(part => part && part.toString().trim() !== '');
+
+        const fullName = fullNameParts.join(', ');
+
+        return {
+          id,
+          woDate: row['WO Date'] || new Date().toISOString().split('T')[0],
+          material,
+          process: row['Final Process Used'] || row['Final Process'] || 'Casting',
+          dimensions,
+          qty,
+          weight: Number(row['Expected Weight'] || row['Expected Wt'] || 0),
+          actualWeight: Number(row['Actual Produced Weight'] || row['Actual Wt'] || 0),
+          deliveryDate: row['Delivery Date'] || '',
+          completionDate: row['Completion Date'] || '',
+          qualityStatus: row['Quality Approval Status'] || row['Quality Status'] || 'Approved',
+          stage: row['Stage'] || 'Completed',
+          status: row['Status'] || 'Completed',
+          start: row['Start Date'] || new Date().toISOString().split('T')[0],
+          due: row['Due Date'] || new Date().toISOString().split('T')[0],
+          aptDate: row['Apt Date'] || '',
+          productType: row['Product Type'] || '-',
+          fullName,
+          moldNo: mold
+        };
+      });
+
+      if (newOrders.length > 0) {
+        addOrders(newOrders).then(() => {
+          alert(`Successfully imported ${newOrders.length} history records.`);
+        }).catch(err => {
+          console.error("Failed to import history", err);
+          alert("Failed to import history records. Check console for details.");
+        });
+      }
+    };
+    reader.readAsBinaryString(file);
   };
 
   return (
@@ -886,6 +956,16 @@ function WorkOrderHistory({ orders }: { orders: any[] }) {
             <Download className="h-4 w-4 mr-2" />
             Export
           </button>
+          <label className="w-full sm:w-auto inline-flex justify-center items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 cursor-pointer">
+            <Upload className="h-4 w-4 mr-2" />
+            Upload Excel
+            <input 
+              type="file" 
+              className="hidden" 
+              accept=".xlsx, .xls" 
+              onChange={handleFileUpload}
+            />
+          </label>
         </div>
       </div>
 
@@ -906,6 +986,7 @@ function WorkOrderHistory({ orders }: { orders: any[] }) {
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">WO Date</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">WO No</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Full Name</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product Type</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Date</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
@@ -938,6 +1019,7 @@ function WorkOrderHistory({ orders }: { orders: any[] }) {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.woDate || order.createdAt || order.start}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-indigo-600">{order.id}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 max-w-xs truncate" title={order.fullName}>{order.fullName}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.productType || '-'}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.start}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.due}</td>
