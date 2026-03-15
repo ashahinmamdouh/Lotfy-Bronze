@@ -115,24 +115,33 @@ function WorkshopRecord() {
 
       // If status is "Completed", update the Work Order stages
       if (formData.status === 'Completed' && selectedWO) {
-        const currentStages = [...selectedWO.stages];
-        const currentIndex = currentStages.findIndex(s => s.name === formData.stage);
+        // Check if this is a Quality or Inspection stage
+        const isQualityStage = formData.stage.toLowerCase().includes('quality') || 
+                              formData.stage.toLowerCase().includes('inspection');
         
-        if (currentIndex !== -1) {
-          currentStages[currentIndex].status = 'completed';
-          if (currentIndex + 1 < currentStages.length) {
-            currentStages[currentIndex + 1].status = 'current';
-            await updateOrder(selectedWO.id, {
-              stages: currentStages,
-              stage: currentStages[currentIndex + 1].name
-            });
-          } else {
-            // All stages completed
-            await updateOrder(selectedWO.id, {
-              stages: currentStages,
-              status: 'Completed',
-              completionDate: new Date().toISOString().split('T')[0]
-            });
+        if (isQualityStage) {
+          alert('This stage requires Quality Control approval. Please use the Quality Control menu to pass or reject this stage.');
+          // We still save the workshop record, but we don't update the WO stages
+        } else {
+          const currentStages = [...selectedWO.stages];
+          const currentIndex = currentStages.findIndex(s => s.name === formData.stage);
+          
+          if (currentIndex !== -1) {
+            currentStages[currentIndex].status = 'completed';
+            if (currentIndex + 1 < currentStages.length) {
+              currentStages[currentIndex + 1].status = 'current';
+              await updateOrder(selectedWO.id, {
+                stages: currentStages,
+                stage: currentStages[currentIndex + 1].name
+              });
+            } else {
+              // All stages completed
+              await updateOrder(selectedWO.id, {
+                stages: currentStages,
+                status: 'Completed',
+                completionDate: new Date().toISOString().split('T')[0]
+              });
+            }
           }
         }
       }

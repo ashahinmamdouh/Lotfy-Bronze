@@ -13,9 +13,11 @@ const tabs = [
 ];
 
 function OpenOrdersList({ orders }: { orders: any[] }) {
+  const { deleteMultipleOrders } = useWorkOrders();
   const [searchId, setSearchId] = useState('');
   const [searchMaterial, setSearchMaterial] = useState('');
   const [searchStatus, setSearchStatus] = useState('');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const filteredOrders = orders.filter(order => {
     const matchId = order.id.toLowerCase().includes(searchId.toLowerCase());
@@ -23,6 +25,32 @@ function OpenOrdersList({ orders }: { orders: any[] }) {
     const matchStatus = searchStatus === '' || order.status === searchStatus;
     return matchId && matchMaterial && matchStatus;
   });
+
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedIds(filteredOrders.map(o => o.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectOne = (id: string) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.length === 0) return;
+    if (window.confirm(`Are you sure you want to delete ${selectedIds.length} selected work orders?`)) {
+      try {
+        await deleteMultipleOrders(selectedIds);
+        setSelectedIds([]);
+      } catch (error) {
+        console.error("Failed to delete orders", error);
+      }
+    }
+  };
 
   const handleExport = () => {
     if (filteredOrders.length === 0) {
@@ -77,6 +105,15 @@ function OpenOrdersList({ orders }: { orders: any[] }) {
           </select>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
+          {selectedIds.length > 0 && (
+            <button 
+              onClick={handleDeleteSelected}
+              className="w-full sm:w-auto inline-flex justify-center items-center px-3 py-2 border border-red-300 shadow-sm text-sm leading-4 font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete ({selectedIds.length})
+            </button>
+          )}
           <button 
             onClick={handleExport}
             className="w-full sm:w-auto inline-flex justify-center items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
@@ -94,6 +131,14 @@ function OpenOrdersList({ orders }: { orders: any[] }) {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                        checked={selectedIds.length === filteredOrders.length && filteredOrders.length > 0}
+                        onChange={handleSelectAll}
+                      />
+                    </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">WO Date</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">WO No</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Material</th>
@@ -108,6 +153,14 @@ function OpenOrdersList({ orders }: { orders: any[] }) {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredOrders.map((order) => (
                     <tr key={order.id}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                          checked={selectedIds.includes(order.id)}
+                          onChange={() => handleSelectOne(order.id)}
+                        />
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.woDate || order.start}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-indigo-600">{order.id}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.material}</td>
@@ -140,9 +193,11 @@ function OpenOrdersList({ orders }: { orders: any[] }) {
   );
 }
 
-function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => void }) {
+function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => Promise<void> }) {
   const navigate = useNavigate();
   const { materials, processes, routing } = useMasterData();
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [header, setHeader] = useState({
     woDate: new Date().toISOString().split('T')[0],
     workOrderNo: '',
@@ -290,6 +345,8 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => void }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSaving(true);
+    setError(null);
     
     const newOrders = lines.map((line, index) => {
       const weights = calculateWeight(line);
@@ -321,8 +378,18 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => void }
     try {
       await onAddOrder(newOrders);
       navigate('/work-orders/open');
-    } catch (error) {
-      console.error("Failed to add orders", error);
+    } catch (err: any) {
+      console.error("Failed to add orders", err);
+      let errorMessage = "Failed to save work order. Please try again.";
+      try {
+        const parsedError = JSON.parse(err.message);
+        errorMessage = `Error: ${parsedError.error || err.message}`;
+      } catch (e) {
+        errorMessage = err.message || errorMessage;
+      }
+      setError(errorMessage);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -330,6 +397,18 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => void }
     <div className="max-w-5xl mx-auto pb-12">
       <form className="space-y-8" onSubmit={handleSubmit}>
         {/* Order Header Section */}
+        {error && (
+          <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <X className="h-5 w-5 text-red-400" aria-hidden="true" />
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="bg-[#FAF9F6] p-4 sm:p-8 border border-gray-200 shadow-sm">
           <h2 className="text-2xl sm:text-3xl font-serif italic text-gray-900 mb-6 border-b border-gray-200 pb-4">Order Header</h2>
           
@@ -615,9 +694,13 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => void }
           </button>
           <button 
             type="submit" 
-            className="w-full sm:w-auto px-6 py-3 bg-[#141414] text-white text-sm font-bold tracking-wider uppercase hover:bg-black transition-colors"
+            disabled={isSaving}
+            className={cn(
+              "w-full sm:w-auto px-6 py-3 bg-[#141414] text-white text-sm font-bold tracking-wider uppercase transition-colors",
+              isSaving ? "opacity-50 cursor-not-allowed" : "hover:bg-black"
+            )}
           >
-            Save Work Order
+            {isSaving ? 'Saving...' : 'Save Work Order'}
           </button>
         </div>
       </form>
@@ -626,9 +709,11 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => void }
 }
 
 function WorkOrderHistory({ orders }: { orders: any[] }) {
+  const { deleteMultipleOrders } = useWorkOrders();
   const [searchId, setSearchId] = useState('');
   const [searchMaterial, setSearchMaterial] = useState('');
   const [searchStatus, setSearchStatus] = useState('');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const filteredOrders = orders.filter(order => {
     const matchId = order.id.toLowerCase().includes(searchId.toLowerCase());
@@ -636,6 +721,45 @@ function WorkOrderHistory({ orders }: { orders: any[] }) {
     const matchStatus = searchStatus === '' || order.status === searchStatus;
     return matchId && matchMaterial && matchStatus;
   });
+
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedIds(filteredOrders.map(o => o.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectOne = (id: string) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.length === 0) return;
+    if (window.confirm(`Are you sure you want to delete ${selectedIds.length} selected history records?`)) {
+      try {
+        await deleteMultipleOrders(selectedIds);
+        setSelectedIds([]);
+      } catch (error) {
+        console.error("Failed to delete orders", error);
+      }
+    }
+  };
+
+  const handleDeleteAllHistory = async () => {
+    const historyOrders = orders.filter(o => o.status === 'Completed' || o.status === 'Canceled');
+    if (historyOrders.length === 0) return;
+    if (window.confirm(`Are you sure you want to delete ALL ${historyOrders.length} history records? This action cannot be undone.`)) {
+      try {
+        await deleteMultipleOrders(historyOrders.map(o => o.id));
+        setSelectedIds([]);
+      } catch (error) {
+        console.error("Failed to delete history", error);
+      }
+    }
+  };
 
   const calculateDays = (start: string, completionDate?: string, status?: string) => {
     if (status === 'Canceled') return '-';
@@ -729,7 +853,7 @@ function WorkOrderHistory({ orders }: { orders: any[] }) {
           <select
             value={searchStatus}
             onChange={(e) => setSearchStatus(e.target.value)}
-            className="block w-full sm:w-48 pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md bg-white"
+            className="block w-full sm:w-48 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md bg-white"
           >
             <option value="">All Statuses</option>
             <option value="Planned">Planned</option>
@@ -739,6 +863,22 @@ function WorkOrderHistory({ orders }: { orders: any[] }) {
           </select>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
+          {selectedIds.length > 0 && (
+            <button 
+              onClick={handleDeleteSelected}
+              className="w-full sm:w-auto inline-flex justify-center items-center px-3 py-2 border border-red-300 shadow-sm text-sm leading-4 font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete ({selectedIds.length})
+            </button>
+          )}
+          <button 
+            onClick={handleDeleteAllHistory}
+            className="w-full sm:w-auto inline-flex justify-center items-center px-3 py-2 border border-red-600 shadow-sm text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Delete All History
+          </button>
           <button 
             onClick={handleExport}
             className="w-full sm:w-auto inline-flex justify-center items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
@@ -756,6 +896,14 @@ function WorkOrderHistory({ orders }: { orders: any[] }) {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                        checked={selectedIds.length === filteredOrders.length && filteredOrders.length > 0}
+                        onChange={handleSelectAll}
+                      />
+                    </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">WO Date</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">WO No</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product Type</th>
@@ -780,6 +928,14 @@ function WorkOrderHistory({ orders }: { orders: any[] }) {
                     const delayDays = calculateDelay(order.due, order.deliveryDate, order.status);
                     return (
                       <tr key={order.id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                            checked={selectedIds.includes(order.id)}
+                            onChange={() => handleSelectOne(order.id)}
+                          />
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.woDate || order.createdAt || order.start}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-indigo-600">{order.id}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.productType || '-'}</td>

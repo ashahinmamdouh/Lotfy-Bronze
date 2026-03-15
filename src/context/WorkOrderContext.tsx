@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { collection, onSnapshot, doc, setDoc, query, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, doc, setDoc, query, getDocs, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useFirebase } from './FirebaseContext';
 
@@ -34,6 +34,7 @@ interface WorkOrderContextType {
   addOrders: (newOrders: any[]) => Promise<void>;
   updateOrder: (id: string, updatedData: Partial<WorkOrder>) => Promise<void>;
   deleteOrder: (id: string) => Promise<void>;
+  deleteMultipleOrders: (ids: string[]) => Promise<void>;
 }
 
 export const WorkOrderContext = createContext<WorkOrderContextType | null>(null);
@@ -130,9 +131,12 @@ export const WorkOrderProvider = ({ children }: { children: React.ReactNode }) =
         };
       });
 
+      const batch = writeBatch(db);
       for (const order of formattedOrders) {
-        await setDoc(doc(db, 'workOrders', order.id), order);
+        const docRef = doc(db, 'workOrders', order.id);
+        batch.set(docRef, order);
       }
+      await batch.commit();
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, 'workOrders', user);
     }
@@ -157,8 +161,21 @@ export const WorkOrderProvider = ({ children }: { children: React.ReactNode }) =
     }
   };
 
+  const deleteMultipleOrders = async (ids: string[]) => {
+    if (!user || ids.length === 0) return;
+    try {
+      const batch = writeBatch(db);
+      ids.forEach(id => {
+        batch.delete(doc(db, 'workOrders', id));
+      });
+      await batch.commit();
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, 'workOrders', user);
+    }
+  };
+
   return (
-    <WorkOrderContext.Provider value={{ orders, addOrders, updateOrder, deleteOrder }}>
+    <WorkOrderContext.Provider value={{ orders, addOrders, updateOrder, deleteOrder, deleteMultipleOrders }}>
       {children}
     </WorkOrderContext.Provider>
   );

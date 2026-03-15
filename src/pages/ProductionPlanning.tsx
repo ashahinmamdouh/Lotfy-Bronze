@@ -3,6 +3,7 @@ import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { CalendarDays, Play, ArrowRight, ArrowLeft, RotateCcw, Bell, Check, X, Clock } from 'lucide-react';
 import { useWorkOrders } from '../context/WorkOrderContext';
+import { useMasterData } from '../context/MasterDataContext';
 import { collection, onSnapshot, query, where, doc, updateDoc, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useFirebase } from '../context/FirebaseContext';
@@ -18,6 +19,26 @@ const tabs = [
 
 function WorkOrderExecution() {
   const { orders, updateOrder } = useWorkOrders();
+  const { routing } = useMasterData();
+  const [stageFilter, setStageFilter] = useState('');
+  const [woFilter, setWoFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('Not Complete');
+
+  const uniqueStages = Array.from(new Set(routing.map(r => r.stageName).filter(Boolean))).sort();
+
+  const filteredOrders = orders.filter(wo => {
+    const matchStage = stageFilter === '' || (wo.stage?.toLowerCase() || '').includes(stageFilter.toLowerCase());
+    const matchWO = woFilter === '' || (wo.id?.toLowerCase() || '').includes(woFilter.toLowerCase());
+    
+    let matchStatus = true;
+    if (statusFilter === 'Complete') {
+      matchStatus = wo.status === 'Completed';
+    } else if (statusFilter === 'Not Complete') {
+      matchStatus = wo.status !== 'Completed';
+    }
+    
+    return matchStage && matchWO && matchStatus;
+  });
 
   const handleStartStage = async (wo: any) => {
     if (wo.status === 'Planned') {
@@ -27,25 +48,35 @@ function WorkOrderExecution() {
 
   const handleNextStage = async (wo: any) => {
     const currentIndex = wo.stages.findIndex((s: any) => s.status === 'current');
-    if (currentIndex >= 0 && currentIndex < wo.stages.length - 1) {
-      const newStages = [...wo.stages];
-      newStages[currentIndex].status = 'completed';
-      newStages[currentIndex + 1].status = 'current';
-      
-      const isLastStage = currentIndex + 1 === wo.stages.length - 1;
-      
-      await updateOrder(wo.id, { 
-        stages: newStages,
-        stage: newStages[currentIndex + 1].name,
-        status: isLastStage ? 'Completed' : 'In Production'
-      });
-    } else if (currentIndex === wo.stages.length - 1) {
-      const newStages = [...wo.stages];
-      newStages[currentIndex].status = 'completed';
-      await updateOrder(wo.id, {
-        stages: newStages,
-        status: 'Completed'
-      });
+    if (currentIndex >= 0) {
+      const currentStageName = wo.stages[currentIndex].name.toLowerCase();
+      const isQualityStage = currentStageName.includes('quality') || currentStageName.includes('inspection');
+
+      if (isQualityStage) {
+        alert('This stage requires Quality Control approval. It cannot be moved to the next stage from here. Please use the Quality Control menu.');
+        return;
+      }
+
+      if (currentIndex < wo.stages.length - 1) {
+        const newStages = [...wo.stages];
+        newStages[currentIndex].status = 'completed';
+        newStages[currentIndex + 1].status = 'current';
+        
+        const isLastStage = currentIndex + 1 === wo.stages.length - 1;
+        
+        await updateOrder(wo.id, { 
+          stages: newStages,
+          stage: newStages[currentIndex + 1].name,
+          status: isLastStage ? 'Completed' : 'In Production'
+        });
+      } else {
+        const newStages = [...wo.stages];
+        newStages[currentIndex].status = 'completed';
+        await updateOrder(wo.id, {
+          stages: newStages,
+          status: 'Completed'
+        });
+      }
     }
   };
 
@@ -77,7 +108,74 @@ function WorkOrderExecution() {
 
   return (
     <div className="space-y-6">
-      {orders.map((wo) => (
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
+        <div className="w-full">
+          <label htmlFor="wo-filter" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Filter by WO No</label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Play className="h-4 w-4 text-gray-400" />
+            </div>
+            <input
+              id="wo-filter"
+              type="text"
+              value={woFilter}
+              onChange={(e) => setWoFilter(e.target.value)}
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              placeholder="Search WO No..."
+            />
+          </div>
+        </div>
+        <div className="w-full">
+          <label htmlFor="stage-filter" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Filter by Stage</label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Clock className="h-4 w-4 text-gray-400" />
+            </div>
+            <input
+              id="stage-filter"
+              list="routing-stages"
+              type="text"
+              value={stageFilter}
+              onChange={(e) => setStageFilter(e.target.value)}
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              placeholder="Search stage (from Routing Master)..."
+            />
+            <datalist id="routing-stages">
+              {uniqueStages.map(stage => (
+                <option key={stage} value={stage} />
+              ))}
+            </datalist>
+          </div>
+        </div>
+        <div className="w-full">
+          <label htmlFor="status-filter" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Filter by Status</label>
+          <select
+            id="status-filter"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md bg-white"
+          >
+            <option value="All">All Work Orders</option>
+            <option value="Not Complete">Not Complete</option>
+            <option value="Complete">Complete</option>
+          </select>
+        </div>
+        <div className="sm:col-span-3 text-right text-sm text-gray-500">
+          Showing {filteredOrders.length} of {orders.length} orders
+        </div>
+      </div>
+
+      {filteredOrders.length === 0 && (
+        <div className="text-center py-12 bg-white border border-gray-200 rounded-lg shadow-sm">
+          <Clock className="mx-auto h-12 w-12 text-gray-400" />
+          <h3 className="mt-2 text-sm font-medium text-gray-900">No matching orders</h3>
+          <p className="mt-1 text-sm text-gray-500">
+            No work orders found matching your criteria.
+          </p>
+        </div>
+      )}
+
+      {filteredOrders.map((wo) => (
         <div key={wo.id} className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
           <div className="px-4 py-5 sm:px-6 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
             <div>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
-import { CheckSquare, Check, X, AlertCircle } from 'lucide-react';
+import { CheckSquare, Check, X, AlertCircle, RotateCcw, Clock } from 'lucide-react';
 import { useWorkOrders } from '../context/WorkOrderContext';
 import { useFirebase } from '../context/FirebaseContext';
 import { collection, addDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
@@ -15,18 +15,27 @@ const tabs = [
 function PendingInspection() {
   const { orders, updateOrder } = useWorkOrders();
   const { user } = useFirebase();
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  const pendingOrders = orders.filter(o => o.stage === 'Inspection' && o.status === 'In Production');
+  const pendingOrders = orders.filter(o => 
+    o.status !== 'Completed' && 
+    (o.stage?.toLowerCase() || '').includes('inspection') || (o.stage?.toLowerCase() || '').includes('quality')
+  );
 
-  const handleInspect = async (order: any, result: 'Pass' | 'Reject') => {
+  const handleInspect = async (order: any, result: 'Pass' | 'Reject' | 'RejectLast') => {
     if (!user) return;
+    setProcessingId(order.id);
+    setFeedback(null);
 
     try {
+      console.log(`Starting inspection for WO: ${order.id}, Result: ${result}`);
+      
       // Save inspection record
       await addDoc(collection(db, 'quality_inspections'), {
         workOrderId: order.id,
-        material: order.material,
-        qty: order.qty,
+        material: order.material || 'Unknown',
+        qty: order.qty || 0,
         result,
         inspector: user.email || 'Unknown',
         authorId: user.uid,
@@ -34,34 +43,107 @@ function PendingInspection() {
       });
 
       // Update work order
-      const currentIndex = order.stages.findIndex((s: any) => s.status === 'current');
-      const newStages = [...order.stages];
+      const newStages = [...(order.stages || [])];
+      const currentIndex = newStages.findIndex((s: any) => s.status === 'current');
       
       if (result === 'Pass') {
-        if (currentIndex >= 0) {
+        if (currentIndex !== -1) {
           newStages[currentIndex].status = 'completed';
+          if (currentIndex + 1 < newStages.length) {
+            newStages[currentIndex + 1].status = 'current';
+            await updateOrder(order.id, {
+              qualityStatus: 'Approved',
+              stages: newStages,
+              stage: newStages[currentIndex + 1].name
+            });
+          } else {
+            // All stages completed
+            await updateOrder(order.id, {
+              qualityStatus: 'Approved',
+              stages: newStages,
+              status: 'Completed',
+              completionDate: new Date().toISOString().split('T')[0]
+            });
+          }
+        } else {
+          throw new Error('No current stage found for this work order.');
         }
+      } else if (result === 'Reject') {
+        // FULL REJECT: Reset all stages to beginning
+        const resetStages = (order.stages || []).map((s: any, idx: number) => ({
+          ...s,
+          status: idx === 0 ? 'current' : 'pending'
+        }));
+
         await updateOrder(order.id, {
-          qualityStatus: 'Approved',
-          stages: newStages,
-          status: 'Completed'
+          qualityStatus: 'Rejected (Full)',
+          stages: resetStages,
+          stage: resetStages[0]?.name || 'Unknown',
+          status: 'In Production'
         });
-      } else {
-        await updateOrder(order.id, {
-          qualityStatus: 'Rejected',
-          status: 'Canceled'
-        });
+      } else if (result === 'RejectLast') {
+        // LAST PROCESS REJECT: Return to the previous stage
+        if (currentIndex > 0) {
+          const resetStages = (order.stages || []).map((s: any, idx: number) => {
+            if (idx === currentIndex - 1) return { ...s, status: 'current' };
+            if (idx === currentIndex) return { ...s, status: 'pending' };
+            return s;
+          });
+
+          await updateOrder(order.id, {
+            qualityStatus: 'Rejected (Last Process)',
+            stages: resetStages,
+            stage: resetStages[currentIndex - 1].name,
+            status: 'In Production'
+          });
+        } else {
+          // If it's the first stage, it's the same as full reject
+          const resetStages = (order.stages || []).map((s: any, idx: number) => ({
+            ...s,
+            status: idx === 0 ? 'current' : 'pending'
+          }));
+          await updateOrder(order.id, {
+            qualityStatus: 'Rejected (Full)',
+            stages: resetStages,
+            stage: resetStages[0]?.name || 'Unknown',
+            status: 'In Production'
+          });
+        }
       }
       
-      alert(`Inspection recorded as ${result}`);
+      const message = result === 'Pass' 
+        ? 'Inspection recorded as Pass.' 
+        : result === 'Reject' 
+          ? 'Work Order has been reset to the first stage.' 
+          : 'Work Order has been returned to the previous stage.';
+      
+      setFeedback({ message, type: 'success' });
     } catch (error) {
       console.error('Error saving inspection:', error);
-      alert('Failed to save inspection.');
+      setFeedback({ 
+        message: error instanceof Error ? error.message : 'Failed to save inspection.', 
+        type: 'error' 
+      });
+    } finally {
+      setProcessingId(null);
     }
   };
 
   return (
     <div className="space-y-6">
+      {feedback && (
+        <div className={cn(
+          "p-4 rounded-md flex items-center gap-3",
+          feedback.type === 'success' ? "bg-green-50 text-green-800 border border-green-200" : "bg-red-50 text-red-800 border border-red-200"
+        )}>
+          {feedback.type === 'success' ? <Check className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />}
+          <p className="text-sm font-medium">{feedback.message}</p>
+          <button onClick={() => setFeedback(null)} className="ml-auto text-gray-400 hover:text-gray-600">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {pendingOrders.map((item) => (
           <div key={item.id} className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
@@ -85,13 +167,33 @@ function PendingInspection() {
                   <span className="font-medium text-gray-900">{item.start}</span>
                 </div>
               </div>
-              <div className="mt-6 flex gap-3">
-                <button onClick={() => handleInspect(item, 'Pass')} className="flex-1 inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700">
-                  <Check className="h-4 w-4 mr-2" /> Pass
+              <div className="mt-6 flex flex-col gap-2">
+                <button 
+                  disabled={processingId !== null}
+                  onClick={() => handleInspect(item, 'Pass')} 
+                  className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
+                >
+                  {processingId === item.id ? <Clock className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
+                  Pass Stage
                 </button>
-                <button onClick={() => handleInspect(item, 'Reject')} className="flex-1 inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700">
-                  <X className="h-4 w-4 mr-2" /> Reject
-                </button>
+                <div className="flex gap-2">
+                  <button 
+                    disabled={processingId !== null}
+                    onClick={() => handleInspect(item, 'RejectLast')} 
+                    className="flex-1 inline-flex justify-center items-center px-4 py-2 border border-gray-300 text-xs font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    {processingId === item.id ? <Clock className="h-3 w-3 animate-spin mr-1" /> : <RotateCcw className="h-3 w-3 mr-1" />}
+                    Reject to Last
+                  </button>
+                  <button 
+                    disabled={processingId !== null}
+                    onClick={() => handleInspect(item, 'Reject')} 
+                    className="flex-1 inline-flex justify-center items-center px-4 py-2 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
+                  >
+                    {processingId === item.id ? <Clock className="h-3 w-3 animate-spin mr-1" /> : <X className="h-3 w-3 mr-1" />}
+                    Reject to Start
+                  </button>
+                </div>
               </div>
             </div>
           </div>
