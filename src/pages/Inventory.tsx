@@ -18,8 +18,8 @@ const tabs = [
 
 const inventoryColumns: Column[] = [
   { header: 'Code', accessor: 'code' },
-  { header: 'Name', accessor: 'name' },
-  { header: 'Family', accessor: 'family' },
+  { header: 'Material Name', accessor: 'name' },
+  { header: 'Material Family', accessor: 'family' },
   { header: 'Unit', accessor: 'unit' },
   { header: 'Total Qty', accessor: 'qty' },
   { header: 'Reserved', accessor: 'reserved' },
@@ -28,8 +28,8 @@ const inventoryColumns: Column[] = [
 
 const productInventoryColumns: Column[] = [
   { header: 'Code', accessor: 'code' },
-  { header: 'Name', accessor: 'name' },
-  { header: 'Family', accessor: 'family' },
+  { header: 'Material Name', accessor: 'name' },
+  { header: 'Material Family', accessor: 'family' },
   { header: 'OD (mm)', accessor: 'od' },
   { header: 'ID (mm)', accessor: 'id' },
   { header: 'Length (mm)', accessor: 'length' },
@@ -72,15 +72,11 @@ function InventoryTab({ collectionName, columns, title }: { collectionName: stri
 
   const dynamicColumns = columns.map(col => {
     if (col.accessor === 'name') {
-      const options = collectionName.includes('fg') || collectionName.includes('wip-product')
-        ? products.map(p => p.type)
-        : materials.map(m => m.name);
+      const options = materials.map(m => m.name);
       return { ...col, options: Array.from(new Set(options)) };
     }
     if (col.accessor === 'family') {
-      const options = collectionName.includes('fg') || collectionName.includes('wip-product')
-        ? ['Finished Goods', 'Product']
-        : materials.map(m => m.family);
+      const options = materials.map(m => m.family);
       return { ...col, options: Array.from(new Set(options.filter(Boolean))) };
     }
     return col;
@@ -88,20 +84,13 @@ function InventoryTab({ collectionName, columns, title }: { collectionName: stri
 
   const handleFieldChange = (accessor: string, value: string, currentData: any) => {
     if (accessor === 'name') {
-      if (collectionName.includes('fg') || collectionName.includes('wip-product')) {
-        const product = products.find(p => p.type === value);
-        if (product) {
-          return { ...currentData, family: 'Finished Goods' };
-        }
-      } else {
-        const material = materials.find(m => m.name === value);
-        if (material) {
-          return {
-            ...currentData,
-            code: material.code || currentData.code,
-            family: material.family || currentData.family
-          };
-        }
+      const material = materials.find(m => m.name === value);
+      if (material) {
+        return {
+          ...currentData,
+          code: material.code || currentData.code,
+          family: material.family || currentData.family
+        };
       }
     }
     return currentData;
