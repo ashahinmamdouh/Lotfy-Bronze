@@ -142,7 +142,7 @@ export const WorkOrderProvider = ({ children }: { children: React.ReactNode }) =
           stages,
           stage: stages[0].name,
           fullName,
-          moldNo: order.moldNo || order.mold
+          moldNo: order.moldNo || order.mold || ''
         };
       });
 

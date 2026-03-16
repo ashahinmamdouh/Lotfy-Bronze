@@ -374,7 +374,8 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => Promis
         start: header.startDate || new Date().toISOString().split('T')[0],
         due: header.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         priority: header.priority.split(' - ')[1] || 'Normal',
-        status: 'Planned'
+        status: 'Planned',
+        mold: line.mold || ''
       };
     });
 
