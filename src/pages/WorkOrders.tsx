@@ -427,8 +427,7 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => Promis
       return materialMatch &&
              woOd <= stockOd &&
              woId >= stockId &&
-             woLength <= stockLength &&
-             (Number(stock.available) || 0) > 0;
+             woLength <= stockLength;
     });
   };
 
@@ -492,13 +491,19 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => Promis
       // Process reservations: update inventory
       for (const order of newOrders) {
         if (order.reservations && order.reservations.length > 0) {
-          for (const res of order.reservations) {
-            const stockRef = doc(db, res.stockSource, res.stockId);
-            await updateDoc(stockRef, {
-              reserved: increment(res.qty),
-              available: increment(-res.qty)
-            });
-          }
+            for (const res of order.reservations) {
+              const stockRef = doc(db, res.stockSource, res.stockId);
+              const stockItem = [...inventoryFg, ...inventoryWip].find(s => s._id === res.stockId);
+              const currentNote = stockItem?.reservedNote || '';
+              const newNoteEntry = `${res.qty} - ${res.reservationWo}`;
+              const updatedNote = currentNote ? `${currentNote}, ${newNoteEntry}` : newNoteEntry;
+
+              await updateDoc(stockRef, {
+                reserved: increment(res.qty),
+                available: increment(-res.qty),
+                reservedNote: updatedNote
+              });
+            }
         }
       }
 
@@ -850,6 +855,14 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => Promis
                                     >
                                       Remove
                                     </button>
+                                  </div>
+                                ) : (Number(match.available) || 0) <= 0 && (Number(match.reserved) || 0) > 0 ? (
+                                  <div className="text-red-500 font-bold text-xs uppercase bg-red-50 px-3 py-1.5 border border-red-100">
+                                    All quantity reserved
+                                  </div>
+                                ) : (Number(match.available) || 0) <= 0 ? (
+                                  <div className="text-gray-400 font-bold text-xs uppercase bg-gray-50 px-3 py-1.5 border border-gray-100">
+                                    No available stock
                                   </div>
                                 ) : (
                                   <ReservationForm 

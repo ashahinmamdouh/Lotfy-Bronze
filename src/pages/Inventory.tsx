@@ -22,8 +22,8 @@ const inventoryColumns: Column[] = [
   { header: 'Material Family', accessor: 'family' },
   { header: 'Unit', accessor: 'unit' },
   { header: 'Total Qty', accessor: 'qty' },
-  { header: 'Reserved', accessor: 'reserved' },
-  { header: 'Available', accessor: 'available' },
+  { header: 'Reserved', accessor: 'reserved', readOnly: true },
+  { header: 'Available', accessor: 'available', readOnly: true },
 ];
 
 const productInventoryColumns: Column[] = [
@@ -35,8 +35,9 @@ const productInventoryColumns: Column[] = [
   { header: 'Length (mm)', accessor: 'length' },
   { header: 'Unit', accessor: 'unit' },
   { header: 'Total Qty', accessor: 'qty' },
-  { header: 'Reserved', accessor: 'reserved' },
-  { header: 'Available', accessor: 'available' },
+  { header: 'Reserved', accessor: 'reserved', readOnly: true },
+  { header: 'Available', accessor: 'available', readOnly: true },
+  { header: 'Reserved Note', accessor: 'reservedNote', readOnly: true },
 ];
 
 const issueRequestColumns: Column[] = [
@@ -98,9 +99,11 @@ function InventoryTab({ collectionName, columns, title }: { collectionName: stri
 
   const handleAdd = async (item: any) => {
     if (!user) return;
-    const available = (Number(item.qty) || 0) - (Number(item.reserved) || 0);
+    const reserved = Number(item.reserved) || 0;
+    const available = (Number(item.qty) || 0) - reserved;
     await addDoc(collection(db, collectionName), {
       ...item,
+      reserved,
       available,
       authorId: user.uid,
       createdAt: new Date().toISOString()
@@ -112,9 +115,11 @@ function InventoryTab({ collectionName, columns, title }: { collectionName: stri
     const batch = writeBatch(db);
     items.forEach(item => {
       const docRef = doc(collection(db, collectionName));
-      const available = (Number(item.qty) || 0) - (Number(item.reserved) || 0);
+      const reserved = Number(item.reserved) || 0;
+      const available = (Number(item.qty) || 0) - reserved;
       batch.set(docRef, {
         ...item,
+        reserved,
         available,
         authorId: user.uid,
         createdAt: new Date().toISOString()
@@ -126,9 +131,11 @@ function InventoryTab({ collectionName, columns, title }: { collectionName: stri
   const handleEdit = async (item: any) => {
     if (!user || !item._id) return;
     const { _id, ...dataToUpdate } = item;
-    const available = (Number(dataToUpdate.qty) || 0) - (Number(dataToUpdate.reserved) || 0);
+    const reserved = Number(dataToUpdate.reserved) || 0;
+    const available = (Number(dataToUpdate.qty) || 0) - reserved;
     await setDoc(doc(db, collectionName, _id), {
       ...dataToUpdate,
+      reserved,
       available,
       authorId: user.uid
     }, { merge: true });

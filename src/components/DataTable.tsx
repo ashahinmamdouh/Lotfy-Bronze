@@ -7,6 +7,7 @@ export interface Column {
   accessor: string;
   render?: (value: any, item: any) => React.ReactNode;
   options?: string[];
+  readOnly?: boolean;
 }
 
 interface DataTableProps {
@@ -284,8 +285,8 @@ export function DataTable({ columns, data, searchPlaceholder, exportFileName = "
                     <select
                       value={formData[col.accessor] || ''}
                       onChange={(e) => handleChange(col.accessor, e.target.value)}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-none shadow-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black sm:text-sm"
-                      disabled={isSaving}
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-none shadow-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black sm:text-sm disabled:bg-gray-50 disabled:text-gray-500"
+                      disabled={isSaving || col.readOnly}
                     >
                       <option value="">Select {col.header}</option>
                       {col.options.map((opt, i) => (
@@ -297,8 +298,8 @@ export function DataTable({ columns, data, searchPlaceholder, exportFileName = "
                       type="text"
                       value={formData[col.accessor] || ''}
                       onChange={(e) => handleChange(col.accessor, e.target.value)}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-none shadow-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black sm:text-sm"
-                      disabled={isSaving}
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-none shadow-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black sm:text-sm disabled:bg-gray-50 disabled:text-gray-500"
+                      disabled={isSaving || col.readOnly}
                     />
                   )}
                 </div>
