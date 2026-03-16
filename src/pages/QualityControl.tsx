@@ -215,13 +215,17 @@ function InspectionHistory() {
   useEffect(() => {
     if (!isAuthReady || !user) return;
 
-    const q = query(collection(db, 'quality_inspections'), orderBy('createdAt', 'desc'));
+    const q = query(collection(db, 'quality_inspections'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const fetchedRecords: any[] = [];
       snapshot.forEach((doc) => {
         fetchedRecords.push({ id: doc.id, ...doc.data() });
       });
-      setRecords(fetchedRecords);
+      // Sort in memory to avoid index requirement
+      const sorted = fetchedRecords.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+      setRecords(sorted);
+    }, (error) => {
+      console.error('Error fetching quality inspections:', error);
     });
 
     return () => unsubscribe();

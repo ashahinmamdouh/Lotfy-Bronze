@@ -271,30 +271,35 @@ function PlanningNotification() {
     // Listen for Pending requests
     const qPending = query(
       collection(db, 'overtime_requests'),
-      where('status', '==', 'Pending'),
-      orderBy('createdAt', 'desc')
+      where('status', '==', 'Pending')
     );
     const unsubPending = onSnapshot(qPending, (snapshot) => {
       const records: any[] = [];
       snapshot.forEach((doc) => {
         records.push({ id: doc.id, ...doc.data() });
       });
-      setPendingRequests(records);
+      // Sort in memory
+      const sorted = records.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+      setPendingRequests(sorted);
+    }, (error) => {
+      console.error('Error fetching pending overtime requests:', error);
     });
 
     // Listen for recently Processed requests (last 5)
     const qProcessed = query(
       collection(db, 'overtime_requests'),
-      where('status', 'in', ['Approved', 'Rejected']),
-      orderBy('createdAt', 'desc')
+      where('status', 'in', ['Approved', 'Rejected'])
     );
     const unsubProcessed = onSnapshot(qProcessed, (snapshot) => {
       const records: any[] = [];
       snapshot.forEach((doc) => {
         records.push({ id: doc.id, ...doc.data() });
       });
-      // Limit to last 5 for the "Recent" view
-      setProcessedRequests(records.slice(0, 5));
+      // Sort in memory and limit to last 5 for the "Recent" view
+      const sorted = records.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+      setProcessedRequests(sorted.slice(0, 5));
+    }, (error) => {
+      console.error('Error fetching processed overtime requests:', error);
     });
 
     return () => {

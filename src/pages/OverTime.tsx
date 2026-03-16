@@ -55,13 +55,17 @@ function RequestedOvertime() {
   useEffect(() => {
     if (!isAuthReady || !user) return;
 
-    const q = query(collection(db, 'overtime_requests'), orderBy('createdAt', 'desc'));
+    const q = query(collection(db, 'overtime_requests'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const records: any[] = [];
       snapshot.forEach((doc) => {
         records.push({ id: doc.id, ...doc.data() });
       });
-      setRequests(records);
+      // Sort in memory
+      const sorted = records.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+      setRequests(sorted);
+    }, (error) => {
+      console.error('Error fetching overtime requests:', error);
     });
 
     return () => unsubscribe();
@@ -389,13 +393,17 @@ function OvertimeHistory() {
   useEffect(() => {
     if (!isAuthReady || !user) return;
 
-    const q = query(collection(db, 'overtime_requests'), orderBy('createdAt', 'desc'));
+    const q = query(collection(db, 'overtime_requests'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const records: any[] = [];
       snapshot.forEach((doc) => {
         records.push({ id: doc.id, ...doc.data() });
       });
-      setRequests(records);
+      // Sort in memory
+      const sorted = records.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+      setRequests(sorted);
+    }, (error) => {
+      console.error('Error fetching overtime requests:', error);
     });
 
     return () => unsubscribe();

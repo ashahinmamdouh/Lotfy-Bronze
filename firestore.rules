@@ -77,6 +77,11 @@ service cloud.firestore {
     match /workshop_records/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
     match /quality_inspections/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
     match /inventory_records/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
+    match /inventory_raw/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
+    match /inventory_fg/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
+    match /inventory_wip_product/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
+    match /inventory_wip_raw/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
+    match /inventory_issue/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
     function isAdmin() {
       return isAuthenticated() &&
         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
