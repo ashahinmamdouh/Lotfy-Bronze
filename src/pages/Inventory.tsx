@@ -3,6 +3,7 @@ import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { Package } from 'lucide-react';
 import { useFirebase } from '../context/FirebaseContext';
+import { useMasterData } from '../context/MasterDataContext';
 import { collection, onSnapshot, query, orderBy, doc, setDoc, deleteDoc, addDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase';
 import { DataTable, Column } from '../components/DataTable';
@@ -25,6 +26,19 @@ const inventoryColumns: Column[] = [
   { header: 'Available', accessor: 'available' },
 ];
 
+const productInventoryColumns: Column[] = [
+  { header: 'Code', accessor: 'code' },
+  { header: 'Name', accessor: 'name' },
+  { header: 'Family', accessor: 'family' },
+  { header: 'OD (mm)', accessor: 'od' },
+  { header: 'ID (mm)', accessor: 'id' },
+  { header: 'Length (mm)', accessor: 'length' },
+  { header: 'Unit', accessor: 'unit' },
+  { header: 'Total Qty', accessor: 'qty' },
+  { header: 'Reserved', accessor: 'reserved' },
+  { header: 'Available', accessor: 'available' },
+];
+
 const issueRequestColumns: Column[] = [
   { header: 'Request ID', accessor: 'id' },
   { header: 'Date', accessor: 'date' },
@@ -37,6 +51,7 @@ const issueRequestColumns: Column[] = [
 function InventoryTab({ collectionName, columns, title }: { collectionName: string, columns: Column[], title: string }) {
   const [data, setData] = useState<any[]>([]);
   const { user, isAuthReady } = useFirebase();
+  const { materials, products } = useMasterData();
 
   useEffect(() => {
     if (!isAuthReady || !user) return;
@@ -53,7 +68,44 @@ function InventoryTab({ collectionName, columns, title }: { collectionName: stri
     });
 
     return () => unsubscribe();
-  }, [user, isAuthReady, collectionName]);
+  }, [isAuthReady, user, collectionName]);
+
+  const dynamicColumns = columns.map(col => {
+    if (col.accessor === 'name') {
+      const options = collectionName.includes('fg') || collectionName.includes('wip-product')
+        ? products.map(p => p.type)
+        : materials.map(m => m.name);
+      return { ...col, options: Array.from(new Set(options)) };
+    }
+    if (col.accessor === 'family') {
+      const options = collectionName.includes('fg') || collectionName.includes('wip-product')
+        ? ['Finished Goods', 'Product']
+        : materials.map(m => m.family);
+      return { ...col, options: Array.from(new Set(options.filter(Boolean))) };
+    }
+    return col;
+  });
+
+  const handleFieldChange = (accessor: string, value: string, currentData: any) => {
+    if (accessor === 'name') {
+      if (collectionName.includes('fg') || collectionName.includes('wip-product')) {
+        const product = products.find(p => p.type === value);
+        if (product) {
+          return { ...currentData, family: 'Finished Goods' };
+        }
+      } else {
+        const material = materials.find(m => m.name === value);
+        if (material) {
+          return {
+            ...currentData,
+            code: material.code || currentData.code,
+            family: material.family || currentData.family
+          };
+        }
+      }
+    }
+    return currentData;
+  };
 
   const handleAdd = async (item: any) => {
     if (!user) return;
@@ -100,12 +152,13 @@ function InventoryTab({ collectionName, columns, title }: { collectionName: stri
 
   return (
     <DataTable 
-      columns={columns} 
+      columns={dynamicColumns} 
       data={data} 
       onAdd={handleAdd} 
       onAddMultiple={handleAddMultiple} 
       onEdit={handleEdit} 
       onDelete={handleDelete} 
+      onFieldChange={handleFieldChange}
       searchPlaceholder={`Search ${title}...`} 
       exportFileName={title} 
     />
@@ -146,8 +199,8 @@ export default function Inventory() {
           <Routes>
             <Route path="/" element={<Navigate to="raw" replace />} />
             <Route path="raw" element={<InventoryTab collectionName="inventory_raw" columns={inventoryColumns} title="Raw Materials" />} />
-            <Route path="fg" element={<InventoryTab collectionName="inventory_fg" columns={inventoryColumns} title="Finished Goods" />} />
-            <Route path="wip-product" element={<InventoryTab collectionName="inventory_wip_product" columns={inventoryColumns} title="WIP Product" />} />
+            <Route path="fg" element={<InventoryTab collectionName="inventory_fg" columns={productInventoryColumns} title="Finished Goods" />} />
+            <Route path="wip-product" element={<InventoryTab collectionName="inventory_wip_product" columns={productInventoryColumns} title="WIP Product" />} />
             <Route path="wip-raw" element={<InventoryTab collectionName="inventory_wip_raw" columns={inventoryColumns} title="WIP Raw Material" />} />
             <Route path="issue" element={<InventoryTab collectionName="inventory_issue" columns={issueRequestColumns} title="Issue Request" />} />
           </Routes>

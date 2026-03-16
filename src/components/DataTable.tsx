@@ -18,9 +18,10 @@ interface DataTableProps {
   onAddMultiple?: (items: any[]) => void;
   onEdit?: (item: any, index: number) => void;
   onDelete?: (item: any, index: number) => void;
+  onFieldChange?: (accessor: string, value: string, currentData: any) => any;
 }
 
-export function DataTable({ columns, data, searchPlaceholder, exportFileName = "Data", onAdd, onAddMultiple, onEdit, onDelete }: DataTableProps) {
+export function DataTable({ columns, data, searchPlaceholder, exportFileName = "Data", onAdd, onAddMultiple, onEdit, onDelete, onFieldChange }: DataTableProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [formData, setFormData] = useState<any>({});
@@ -78,7 +79,11 @@ export function DataTable({ columns, data, searchPlaceholder, exportFileName = "
   };
 
   const handleChange = (accessor: string, value: string) => {
-    setFormData((prev: any) => ({ ...prev, [accessor]: value }));
+    let newFormData = { ...formData, [accessor]: value };
+    if (onFieldChange) {
+      newFormData = onFieldChange(accessor, value, newFormData);
+    }
+    setFormData(newFormData);
   };
 
   const handleExport = () => {
