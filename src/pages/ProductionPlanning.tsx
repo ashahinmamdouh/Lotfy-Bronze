@@ -11,11 +11,130 @@ import { useState, useEffect } from 'react';
 
 const tabs = [
   { name: 'Work Order Execution', path: 'execution' },
+  { name: 'Open order - Workshop', path: 'workshop' },
   { name: 'Weekly Production Plan', path: 'weekly' },
   { name: 'Capacity Calculation', path: 'capacity' },
   { name: 'Gantt Chart', path: 'gantt' },
   { name: 'Planning Notification', path: 'notification' },
 ];
+
+function OpenOrdersWorkshop() {
+  const { orders } = useWorkOrders();
+  const [workshopFilter, setWorkshopFilter] = useState('All');
+  
+  const openOrders = orders.filter(o => o.status !== 'Completed' && o.status !== 'Canceled');
+  
+  // Get unique workshops for filter
+  const uniqueWorkshops = Array.from(new Set(openOrders.map(o => o.workshop).filter(Boolean))).sort();
+
+  // Filter by workshop
+  const filteredOrders = workshopFilter === 'All' 
+    ? openOrders 
+    : openOrders.filter(o => o.workshop === workshopFilter);
+
+  // Group orders by stage
+  const stageGroups = filteredOrders.reduce((acc: Record<string, any[]>, order) => {
+    const stage = order.stage || 'Unassigned';
+    if (!acc[stage]) acc[stage] = [];
+    acc[stage].push(order);
+    return acc;
+  }, {});
+
+  const stages = Object.keys(stageGroups).sort();
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+        <div className="max-w-xs">
+          <label htmlFor="workshop-filter" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Filter by Workshop</label>
+          <select
+            id="workshop-filter"
+            value={workshopFilter}
+            onChange={(e) => setWorkshopFilter(e.target.value)}
+            className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md bg-white border"
+          >
+            <option value="All">All Workshops</option>
+            {uniqueWorkshops.map(ws => (
+              <option key={ws} value={ws}>{ws}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="flex flex-col">
+        <div className="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+          <div className="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
+            <div className="shadow overflow-hidden border border-gray-200 sm:rounded-lg">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-1/4 border-r border-gray-200">
+                      Production Stage
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                      Open Work Orders
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {stages.length === 0 ? (
+                    <tr>
+                      <td colSpan={2} className="px-6 py-12 text-center text-sm text-gray-500 italic">
+                        No open work orders found for the selected criteria.
+                      </td>
+                    </tr>
+                  ) : (
+                    stages.map((stage) => (
+                      <tr key={stage}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-indigo-600 bg-gray-50 border-r border-gray-200 align-top">
+                          {stage}
+                          <div className="text-[10px] text-gray-400 mt-1 uppercase tracking-tighter">
+                            {stageGroups[stage].length} Active Orders
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500 p-0">
+                          <div className="divide-y divide-gray-100">
+                            {stageGroups[stage].map((order) => (
+                              <div key={order.id} className="p-4 hover:bg-indigo-50 transition-colors flex justify-between items-center">
+                                <div>
+                                  <div className="font-bold text-gray-900">{order.id}</div>
+                                  <div className="text-xs text-gray-500 mt-0.5">
+                                    {order.material} | {order.dimensions} | Qty: {order.qty}
+                                  </div>
+                                  <div className="flex gap-2 mt-2">
+                                    <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-[10px] font-bold rounded uppercase">
+                                      {order.workshop || 'No Workshop'}
+                                    </span>
+                                    <span className={cn(
+                                      "px-2 py-0.5 text-[10px] font-bold rounded uppercase",
+                                      order.priority === 'Urgent' ? "bg-red-100 text-red-700" :
+                                      order.priority === 'High' ? "bg-orange-100 text-orange-700" :
+                                      "bg-gray-100 text-gray-700"
+                                    )}>
+                                      {order.priority}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-[10px] font-bold text-gray-400 uppercase">Due Date</div>
+                                  <div className="text-xs font-mono font-bold text-gray-700">{order.due}</div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function WorkOrderExecution() {
   const { orders, updateOrder } = useWorkOrders();
@@ -443,6 +562,7 @@ export default function ProductionPlanning() {
           <Routes>
             <Route path="/" element={<Navigate to="execution" replace />} />
             <Route path="execution" element={<WorkOrderExecution />} />
+            <Route path="workshop" element={<OpenOrdersWorkshop />} />
             <Route path="weekly" element={<PlaceholderTab title="Weekly Production Plan" />} />
             <Route path="capacity" element={<PlaceholderTab title="Capacity Calculation" />} />
             <Route path="gantt" element={<PlaceholderTab title="Gantt Chart" />} />
