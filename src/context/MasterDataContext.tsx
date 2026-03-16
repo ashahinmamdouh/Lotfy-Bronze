@@ -14,7 +14,6 @@ interface MasterDataContextType {
   molds: any[];
   routing: any[];
   rejections: any[];
-  castingTypes: any[];
   
   addMasterData: (collectionName: string, item: any) => Promise<void>;
   addMultipleMasterData: (collectionName: string, items: any[]) => Promise<void>;
@@ -35,7 +34,6 @@ export const MasterDataProvider = ({ children }: { children: React.ReactNode }) 
   const [molds, setMolds] = useState<any[]>([]);
   const [routing, setRouting] = useState<any[]>([]);
   const [rejections, setRejections] = useState<any[]>([]);
-  const [castingTypes, setCastingTypes] = useState<any[]>([]);
 
   const { user, isAuthReady } = useFirebase();
 
@@ -51,7 +49,6 @@ export const MasterDataProvider = ({ children }: { children: React.ReactNode }) 
       setMolds([]);
       setRouting([]);
       setRejections([]);
-      setCastingTypes([]);
       return;
     }
 
@@ -66,7 +63,6 @@ export const MasterDataProvider = ({ children }: { children: React.ReactNode }) 
       { name: 'master_molds', setter: setMolds },
       { name: 'master_routing', setter: setRouting },
       { name: 'master_rejections', setter: setRejections },
-      { name: 'master_casting_types', setter: setCastingTypes },
     ];
 
     const unsubscribes = collections.map(({ name, setter }) => {
@@ -136,7 +132,7 @@ export const MasterDataProvider = ({ children }: { children: React.ReactNode }) 
 
   return (
     <MasterDataContext.Provider value={{
-      materials, products, processes, status, workshops, operators, machines, molds, routing, rejections, castingTypes,
+      materials, products, processes, status, workshops, operators, machines, molds, routing, rejections,
       addMasterData, addMultipleMasterData, updateMasterData, deleteMasterData
     }}>
       {children}

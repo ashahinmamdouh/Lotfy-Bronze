@@ -8,7 +8,6 @@ import { useMasterData } from '../context/MasterDataContext';
 const tabs = [
   { name: 'MATERIALS', path: 'materials' },
   { name: 'FG PRODUCTS', path: 'products' },
-  { name: 'CASTING TYPES', path: 'casting-types' },
   { name: 'MANUFACTURING PROCESSES', path: 'processes' },
   { name: 'STATUS TYPES', path: 'status' },
   { name: 'MACHINES', path: 'machines' },
@@ -116,12 +115,6 @@ const routingColumns: Column[] = [
   { header: 'Notes', accessor: 'notes' },
 ];
 
-// Casting Types
-const castingTypesColumns: Column[] = [
-  { header: 'Casting Type', accessor: 'name' },
-  { header: 'Description', accessor: 'description' },
-];
-
 // Rejection Reasons
 const rejectionsColumns: Column[] = [
   { header: 'Rejection Code', accessor: 'code' },
@@ -141,7 +134,7 @@ function PlaceholderTab({ title }: { title: string }) {
 
 export default function MasterData() {
   const {
-    materials, products, processes, status, workshops, operators, machines, molds, routing, rejections, castingTypes,
+    materials, products, processes, status, workshops, operators, machines, molds, routing, rejections,
     addMasterData, addMultipleMasterData, updateMasterData, deleteMasterData
   } = useMasterData();
 
@@ -265,18 +258,6 @@ export default function MasterData() {
     if (id) deleteMasterData('master_rejections', id);
   };
 
-  // Casting Types
-  const handleAddCastingType = (item: any) => addMasterData('master_casting_types', item);
-  const handleUploadCastingTypes = (items: any[]) => addMultipleMasterData('master_casting_types', items);
-  const handleEditCastingType = (item: any) => {
-    const id = item._id;
-    if (id) updateMasterData('master_casting_types', id, item);
-  };
-  const handleDeleteCastingType = (item: any) => {
-    const id = item._id;
-    if (id) deleteMasterData('master_casting_types', id);
-  };
-
   const dynamicRoutingColumns = routingColumns.map(col => {
     if (col.accessor === 'processType') {
       return { ...col, options: processes.map(p => p.type) };
@@ -341,7 +322,6 @@ export default function MasterData() {
           <Route path="/" element={<Navigate to="materials" replace />} />
           <Route path="materials" element={<DataTable columns={materialsColumns} data={materials} onAdd={handleAddMaterial} onAddMultiple={handleUploadMaterials} onEdit={handleEditMaterial} onDelete={handleDeleteMaterial} searchPlaceholder="Search Materials..." exportFileName="Materials" />} />
           <Route path="products" element={<DataTable columns={productsColumns} data={products} onAdd={handleAddProduct} onAddMultiple={handleUploadProducts} onEdit={handleEditProduct} onDelete={handleDeleteProduct} searchPlaceholder="Search Products..." exportFileName="Products" />} />
-          <Route path="casting-types" element={<DataTable columns={castingTypesColumns} data={castingTypes} onAdd={handleAddCastingType} onAddMultiple={handleUploadCastingTypes} onEdit={handleEditCastingType} onDelete={handleDeleteCastingType} searchPlaceholder="Search Casting Types..." exportFileName="Casting Types" />} />
           <Route path="processes" element={<DataTable columns={processesColumns} data={processes} onAdd={handleAddProcess} onAddMultiple={handleUploadProcesses} onEdit={handleEditProcess} onDelete={handleDeleteProcess} searchPlaceholder="Search Processes..." exportFileName="Processes" />} />
           <Route path="status" element={<DataTable columns={statusColumns} data={status} onAdd={handleAddStatus} onAddMultiple={handleUploadStatus} onEdit={handleEditStatus} onDelete={handleDeleteStatus} searchPlaceholder="Search Status Types..." exportFileName="Status Types" />} />
           <Route path="workshops" element={<DataTable columns={workshopsColumns} data={workshops} onAdd={handleAddWorkshop} onAddMultiple={handleUploadWorkshops} onEdit={handleEditWorkshop} onDelete={handleDeleteWorkshop} searchPlaceholder="Search Workshops..." exportFileName="Workshops" />} />
