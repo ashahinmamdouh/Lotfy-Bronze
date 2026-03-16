@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Routes, Route, NavLink, Navigate, useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
-import { Plus, Search, Download, Upload, Edit, Trash2, FileText, X } from 'lucide-react';
+import { Plus, Search, Download, Upload, Edit, Trash2, FileText, X, Package, CheckCircle2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useWorkOrders } from '../context/WorkOrderContext';
 import { useMasterData } from '../context/MasterDataContext';
+import { collection, onSnapshot, query, doc, updateDoc, increment } from 'firebase/firestore';
+import { db } from '../firebase';
 
 const tabs = [
   { name: 'Create Work Order', path: 'create' },
@@ -196,11 +198,66 @@ function OpenOrdersList({ orders }: { orders: any[] }) {
   );
 }
 
+function ReservationForm({ onReserve, maxQty, defaultWo }: { onReserve: (qty: number, wo: string) => void, maxQty: number, defaultWo: string }) {
+  const [qty, setQty] = useState(1);
+  const [wo, setWo] = useState(defaultWo || '');
+
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex flex-col">
+        <label className="text-[9px] font-bold text-gray-400 uppercase mb-0.5">Qty</label>
+        <input 
+          type="number" 
+          min="1" 
+          max={maxQty}
+          value={qty}
+          onChange={(e) => setQty(Number(e.target.value))}
+          className="w-16 border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+        />
+      </div>
+      <div className="flex flex-col">
+        <label className="text-[9px] font-bold text-gray-400 uppercase mb-0.5">Res. WO</label>
+        <input 
+          type="text" 
+          value={wo}
+          onChange={(e) => setWo(e.target.value)}
+          className="w-24 border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          placeholder="WO No"
+        />
+      </div>
+      <button 
+        type="button"
+        onClick={() => onReserve(qty, wo)}
+        className="mt-4 px-3 py-1.5 bg-indigo-600 text-white text-[10px] font-bold uppercase hover:bg-indigo-700 transition-colors"
+      >
+        Reserve
+      </button>
+    </div>
+  );
+}
+
 function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => Promise<void> }) {
   const navigate = useNavigate();
   const { materials, processes, routing } = useMasterData();
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [inventoryFg, setInventoryFg] = useState<any[]>([]);
+  const [inventoryWip, setInventoryWip] = useState<any[]>([]);
+  const [reservations, setReservations] = useState<Record<string, any[]>>({});
+
+  useEffect(() => {
+    const unsubFg = onSnapshot(collection(db, 'inventory_fg'), (snapshot) => {
+      setInventoryFg(snapshot.docs.map(doc => ({ _id: doc.id, _source: 'inventory_fg', ...doc.data() })));
+    });
+    const unsubWip = onSnapshot(collection(db, 'inventory_wip_product'), (snapshot) => {
+      setInventoryWip(snapshot.docs.map(doc => ({ _id: doc.id, _source: 'inventory_wip_product', ...doc.data() })));
+    });
+    return () => {
+      unsubFg();
+      unsubWip();
+    };
+  }, []);
+
   const [header, setHeader] = useState({
     woDate: new Date().toISOString().split('T')[0],
     workOrderNo: '',
@@ -346,6 +403,53 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => Promis
     };
   };
 
+  const findMatches = (line: any) => {
+    if (!line.od || !line.length || !line.material) return [];
+    
+    const woOd = Number(line.od);
+    const woId = Number(line.innerId) || 0;
+    const woLength = Number(line.length);
+    const materialCode = line.material.split(' ')[0];
+
+    return [...inventoryFg, ...inventoryWip].filter(stock => {
+      const stockOd = Number(stock.od) || 0;
+      const stockId = Number(stock.id) || 0;
+      const stockLength = Number(stock.length) || 0;
+      const stockCode = stock.code || '';
+      const stockName = stock.name || '';
+      
+      const materialMatch = stockCode.includes(materialCode) || stockName.includes(materialCode);
+      
+      return materialMatch &&
+             woOd <= stockOd &&
+             woId >= stockId &&
+             woLength <= stockLength &&
+             (Number(stock.available) || 0) > 0;
+    });
+  };
+
+  const handleReserve = (lineId: string, stockItem: any, qty: number, reservationWo: string) => {
+    const newReservation = {
+      stockId: stockItem._id,
+      stockSource: stockItem._source,
+      qty: Number(qty),
+      reservationWo,
+      stockDetails: `${stockItem.name} (${stockItem.od}x${stockItem.id}x${stockItem.length})`
+    };
+
+    setReservations(prev => ({
+      ...prev,
+      [lineId]: [...(prev[lineId] || []), newReservation]
+    }));
+  };
+
+  const removeReservation = (lineId: string, stockId: string) => {
+    setReservations(prev => ({
+      ...prev,
+      [lineId]: (prev[lineId] || []).filter(r => r.stockId !== stockId)
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
@@ -375,11 +479,25 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => Promis
         due: header.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         priority: header.priority.split(' - ')[1] || 'Normal',
         status: 'Planned',
-        mold: line.mold || ''
+        mold: line.mold || '',
+        reservations: reservations[line.id] || []
       };
     });
 
     try {
+      // Process reservations: update inventory
+      for (const order of newOrders) {
+        if (order.reservations && order.reservations.length > 0) {
+          for (const res of order.reservations) {
+            const stockRef = doc(db, res.stockSource, res.stockId);
+            await updateDoc(stockRef, {
+              reserved: increment(res.qty),
+              available: increment(-res.qty)
+            });
+          }
+        }
+      }
+
       await onAddOrder(newOrders);
       navigate('/work-orders/open');
     } catch (err: any) {
@@ -682,6 +800,62 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => Promis
                       </div>
                     )}
                   </div>
+
+                  {/* Stock Matches Section */}
+                  {(() => {
+                    const matches = findMatches(line);
+                    if (matches.length === 0) return null;
+                    return (
+                      <div className="p-6 bg-indigo-50 border-t border-indigo-100">
+                        <div className="flex items-center gap-2 mb-4">
+                          <Package className="w-4 h-4 text-indigo-600" />
+                          <h3 className="text-sm font-bold text-indigo-900 uppercase tracking-wider">Available Stock Matches</h3>
+                        </div>
+                        <div className="grid grid-cols-1 gap-3">
+                          {matches.map(match => {
+                            const isReserved = (reservations[line.id] || []).some(r => r.stockId === match._id);
+                            return (
+                              <div key={match._id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-4 bg-white border border-indigo-200 shadow-sm">
+                                <div>
+                                  <div className="text-sm font-bold text-gray-900">{match.name}</div>
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    OD: <span className="font-bold text-gray-700">{match.od}mm</span> | 
+                                    ID: <span className="font-bold text-gray-700">{match.id}mm</span> | 
+                                    L: <span className="font-bold text-gray-700">{match.length}mm</span> | 
+                                    Available: <span className="font-bold text-indigo-600">{match.available} {match.unit}</span>
+                                  </div>
+                                  <div className="text-[10px] text-indigo-600 font-bold uppercase mt-2 px-2 py-0.5 bg-indigo-50 inline-block">
+                                    {match._source === 'inventory_fg' ? 'Finished Goods' : 'WIP Product'}
+                                  </div>
+                                </div>
+                                
+                                {isReserved ? (
+                                  <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-1.5 text-green-600 font-bold text-sm bg-green-50 px-3 py-1.5 border border-green-100">
+                                      <CheckCircle2 className="w-4 h-4" /> Reserved
+                                    </div>
+                                    <button 
+                                      type="button" 
+                                      onClick={() => removeReservation(line.id, match._id)}
+                                      className="text-xs text-red-500 font-bold uppercase hover:underline"
+                                    >
+                                      Remove
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <ReservationForm 
+                                    onReserve={(qty, wo) => handleReserve(line.id, match, qty, wo)} 
+                                    maxQty={match.available}
+                                    defaultWo={header.workOrderNo}
+                                  />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })}
