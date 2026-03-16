@@ -202,6 +202,10 @@ function ReservationForm({ onReserve, maxQty, defaultWo }: { onReserve: (qty: nu
   const [qty, setQty] = useState(1);
   const [wo, setWo] = useState(defaultWo || '');
 
+  useEffect(() => {
+    if (!wo) setWo(defaultWo);
+  }, [defaultWo]);
+
   return (
     <div className="flex items-center gap-2">
       <div className="flex flex-col">
@@ -632,9 +636,15 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => Promis
           <div className="space-y-8">
             {lines.map((line, index) => {
               const weights = calculateWeight(line);
+              const matches = findMatches(line);
               
               return (
                 <div key={line.id} className="bg-white border border-gray-200 shadow-sm relative">
+                  {matches.length > 0 && (
+                    <div className="absolute left-6 -top-3 bg-indigo-600 text-white px-3 py-1 text-[10px] font-bold uppercase tracking-widest shadow-md z-10 flex items-center gap-1.5">
+                      <Package className="w-3 h-3" /> Stock Match Available
+                    </div>
+                  )}
                   {lines.length > 1 && (
                     <button 
                       type="button" 
@@ -803,7 +813,6 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => Promis
 
                   {/* Stock Matches Section */}
                   {(() => {
-                    const matches = findMatches(line);
                     if (matches.length === 0) return null;
                     return (
                       <div className="p-6 bg-indigo-50 border-t border-indigo-100">
