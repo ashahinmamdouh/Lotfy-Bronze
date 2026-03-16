@@ -16,7 +16,7 @@ export interface WorkOrder {
   due: string;
   priority: string;
   status: string;
-  stages: { name: string; status: 'completed' | 'current' | 'pending' }[];
+  stages: { name: string; status: 'completed' | 'current' | 'pending'; workshop?: string }[];
   createdAt?: string;
   actualWeight?: number;
   deliveryDate?: string;
@@ -113,16 +113,17 @@ export const WorkOrderProvider = ({ children }: { children: React.ReactNode }) =
         const stages = orderRouting.length > 0 
           ? orderRouting.map((r, idx) => ({
               name: r.stageName || r.processType || 'Unknown Stage',
-              status: idx === 0 ? 'current' : 'pending' as 'completed' | 'current' | 'pending'
+              status: idx === 0 ? 'current' : 'pending' as 'completed' | 'current' | 'pending',
+              workshop: r.workshopId
             }))
           : [
-              { name: 'Material Prep', status: 'current' as const },
-              { name: 'Furnace Melting', status: 'pending' as const },
-              { name: order.process || 'Casting', status: 'pending' as const },
-              { name: 'Cooling', status: 'pending' as const },
-              { name: 'Rough Machining', status: 'pending' as const },
-              { name: 'Final Machining', status: 'pending' as const },
-              { name: 'Inspection', status: 'pending' as const },
+              { name: 'Material Prep', status: 'current' as const, workshop: 'Foundry A' },
+              { name: 'Furnace Melting', status: 'pending' as const, workshop: 'Foundry A' },
+              { name: order.process || 'Casting', status: 'pending' as const, workshop: 'Foundry A' },
+              { name: 'Cooling', status: 'pending' as const, workshop: 'Foundry A' },
+              { name: 'Rough Machining', status: 'pending' as const, workshop: 'Machining Workshop' },
+              { name: 'Final Machining', status: 'pending' as const, workshop: 'Machining Workshop' },
+              { name: 'Inspection', status: 'pending' as const, workshop: 'Quality Workshop' },
             ];
 
         // Generate Full Name: WO No, Material, Dimension, Quantity, Mold No

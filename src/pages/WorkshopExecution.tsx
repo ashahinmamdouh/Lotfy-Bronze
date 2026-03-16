@@ -74,7 +74,21 @@ function WorkshopRecord() {
   }, [selectedWO]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData(prev => {
+      const newData = { ...prev, [name]: value };
+      
+      // If workshop changes, check if current workorder is still valid
+      if (name === 'workshop' && prev.workorder !== 'none') {
+        const order = orders.find(o => o.id === prev.workorder);
+        const currentStage = order?.stages?.find((s: any) => s.status === 'current');
+        if (currentStage?.workshop !== value) {
+          newData.workorder = 'none';
+        }
+      }
+      
+      return newData;
+    });
   };
 
   const handleStartTimer = () => {
@@ -183,6 +197,21 @@ function WorkshopRecord() {
             )}
           </div>
 
+          <div className="mb-8 p-4 bg-indigo-50 border border-indigo-100 rounded-lg">
+            <label htmlFor="workshop" className="block text-xs font-bold text-indigo-600 uppercase tracking-wider mb-2">Active Workshop</label>
+            <select 
+              id="workshop" 
+              name="workshop" 
+              value={formData.workshop} 
+              onChange={handleChange} 
+              className="w-full border border-indigo-200 px-4 py-3 text-lg font-bold text-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white rounded-md shadow-sm"
+            >
+              {workshops.map(w => (
+                <option key={w._id} value={w.name}>{w.name}</option>
+              ))}
+            </select>
+          </div>
+
           {/* Stage Progress Stepper */}
           {selectedWO && selectedWO.stages && (
             <div className="mb-10">
@@ -228,15 +257,6 @@ function WorkshopRecord() {
             </div>
 
             <div className="sm:col-span-3">
-              <label htmlFor="workshop" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Workshop</label>
-              <select id="workshop" name="workshop" value={formData.workshop} onChange={handleChange} className="w-full border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black bg-white">
-                {workshops.map(w => (
-                  <option key={w._id} value={w.name}>{w.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="sm:col-span-3">
               <label htmlFor="machine" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Machine</label>
               <select id="machine" name="machine" value={formData.machine} onChange={handleChange} className="w-full border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black bg-white">
                 {machines.map(m => (
@@ -249,9 +269,16 @@ function WorkshopRecord() {
               <label htmlFor="workorder" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Work Order</label>
               <select id="workorder" name="workorder" value={formData.workorder} onChange={handleChange} className="w-full border border-gray-300 px-3 py-2 text-sm font-bold text-[#f27d26] focus:outline-none focus:ring-1 focus:ring-black focus:border-black bg-white">
                 <option value="none">None (Maintenance/Setup)</option>
-                {orders.filter(o => o.status !== 'Completed').map(wo => (
-                  <option key={wo.id} value={wo.id}>{wo.id} - {wo.material} ({wo.process})</option>
-                ))}
+                {orders
+                  .filter(o => o.status !== 'Completed')
+                  .filter(o => {
+                    if (!formData.workshop) return true;
+                    const currentStage = o.stages?.find((s: any) => s.status === 'current');
+                    return currentStage?.workshop === formData.workshop;
+                  })
+                  .map(wo => (
+                    <option key={wo.id} value={wo.id}>{wo.id} - {wo.material} ({wo.process})</option>
+                  ))}
               </select>
             </div>
 
