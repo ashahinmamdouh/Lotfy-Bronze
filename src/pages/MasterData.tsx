@@ -57,6 +57,7 @@ const statusColumns: Column[] = [
 const workshopsColumns: Column[] = [
   { header: 'Workshop ID', accessor: 'id' },
   { header: 'Workshop Name', accessor: 'name' },
+  { header: 'Stage Name', accessor: 'stageName' },
   { header: 'Workshop Supervisor', accessor: 'supervisor' },
 ];
 
@@ -264,6 +265,9 @@ export default function MasterData() {
     }
     if (col.accessor === 'workshopId') {
       return { ...col, options: workshops.map(w => w.name) };
+    }
+    if (col.accessor === 'stageName') {
+      return { ...col, options: Array.from(new Set(workshops.map(w => w.stageName).filter(Boolean))) };
     }
     if (col.accessor === 'productCategory') {
       return { ...col, options: ['Bars', 'Bushings', 'Plates', 'Custom'] };

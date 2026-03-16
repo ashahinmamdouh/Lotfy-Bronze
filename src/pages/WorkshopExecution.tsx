@@ -207,7 +207,7 @@ function WorkshopRecord() {
               className="w-full border border-indigo-200 px-4 py-3 text-lg font-bold text-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white rounded-md shadow-sm"
             >
               {workshops.map(w => (
-                <option key={w._id} value={w.name}>{w.name}</option>
+                <option key={w._id} value={w.name}>{w.name} {w.stageName ? `(${w.stageName})` : ''}</option>
               ))}
             </select>
           </div>
