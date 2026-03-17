@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
-import { Factory, Play, Square, Save } from 'lucide-react';
+import { Factory, Play, Square, Save, Search, ChevronDown } from 'lucide-react';
 import { useWorkOrders } from '../context/WorkOrderContext';
 import { useMasterData } from '../context/MasterDataContext';
 import { useFirebase } from '../context/FirebaseContext';
@@ -20,7 +20,7 @@ function WorkshopRecord() {
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     priority: '1',
-    workshop: '',
+    workshop: localStorage.getItem('activeWorkshop') || '',
     machine: '',
     workorder: 'none',
     stage: '',
@@ -36,6 +36,20 @@ function WorkshopRecord() {
 
   const [timerActive, setTimerActive] = useState(false);
   const [timerStart, setTimerStart] = useState<number | null>(null);
+  const [woSearch, setWoSearch] = useState('');
+  const [isWoDropdownOpen, setIsWoDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsWoDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Set initial values from master data
   useEffect(() => {
@@ -79,17 +93,41 @@ function WorkshopRecord() {
       const newData = { ...prev, [name]: value };
       
       // If workshop changes, check if current workorder is still valid
-      if (name === 'workshop' && prev.workorder !== 'none') {
-        const order = orders.find(o => o.id === prev.workorder);
-        const currentStage = order?.stages?.find((s: any) => s.status === 'current');
-        if (currentStage?.workshop !== value) {
-          newData.workorder = 'none';
+      if (name === 'workshop') {
+        localStorage.setItem('activeWorkshop', value);
+        if (prev.workorder !== 'none') {
+          const order = orders.find(o => o.id === prev.workorder);
+          const currentStage = order?.stages?.find((s: any) => s.status === 'current');
+          if (currentStage?.workshop !== value) {
+            newData.workorder = 'none';
+          }
         }
       }
       
       return newData;
     });
   };
+
+  const filteredWOOptions = useMemo(() => {
+    const availableOrders = orders
+      .filter(o => o.status !== 'Completed')
+      .filter(o => {
+        if (!formData.workshop) return true;
+        // Check both order.workshop and current stage workshop for robustness
+        if (o.workshop === formData.workshop) return true;
+        const currentStage = o.stages?.find((s: any) => s.status === 'current');
+        return currentStage?.workshop === formData.workshop;
+      });
+
+    if (!woSearch) return availableOrders;
+    
+    const search = woSearch.toLowerCase();
+    return availableOrders.filter(o => 
+      (o.id?.toLowerCase() || '').includes(search) ||
+      (o.material?.toLowerCase() || '').includes(search) ||
+      (o.process?.toLowerCase() || '').includes(search)
+    );
+  }, [orders, formData.workshop, woSearch]);
 
   const handleStartTimer = () => {
     setTimerActive(true);
@@ -267,27 +305,87 @@ function WorkshopRecord() {
 
             <div className="sm:col-span-3">
               <label htmlFor="workorder" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Work Order</label>
-              <select id="workorder" name="workorder" value={formData.workorder} onChange={handleChange} className="w-full border border-gray-300 px-3 py-2 text-sm font-bold text-[#f27d26] focus:outline-none focus:ring-1 focus:ring-black focus:border-black bg-white">
-                <option value="none">None (Maintenance/Setup)</option>
-                {orders
-                  .filter(o => o.status !== 'Completed')
-                  .filter(o => {
-                    if (!formData.workshop) return true;
-                    const currentStage = o.stages?.find((s: any) => s.status === 'current');
-                    return currentStage?.workshop === formData.workshop;
-                  })
-                  .map(wo => (
-                    <option key={wo.id} value={wo.id}>{wo.id} - {wo.material} ({wo.process})</option>
-                  ))}
-              </select>
+              <div className="relative" ref={dropdownRef}>
+                <div 
+                  className="w-full border border-gray-300 px-3 py-2 text-sm font-bold text-[#f27d26] bg-white cursor-pointer flex justify-between items-center"
+                  onClick={() => setIsWoDropdownOpen(!isWoDropdownOpen)}
+                >
+                  <span>
+                    {formData.workorder === 'none' 
+                      ? 'None (Maintenance/Setup)' 
+                      : (orders.find(o => o.id === formData.workorder)?.id || 'Select Work Order')}
+                  </span>
+                  <ChevronDown className={cn("h-4 w-4 text-gray-400 transition-transform", isWoDropdownOpen && "transform rotate-180")} />
+                </div>
+
+                {isWoDropdownOpen && (
+                  <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 shadow-lg rounded-md overflow-hidden">
+                    <div className="p-2 border-b border-gray-100 bg-gray-50">
+                      <div className="relative">
+                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+                        <input
+                          type="text"
+                          className="w-full pl-8 pr-3 py-2 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          placeholder="Search Work Order..."
+                          value={woSearch}
+                          onChange={(e) => setWoSearch(e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
+                          autoFocus
+                        />
+                      </div>
+                    </div>
+                    <div className="max-h-60 overflow-y-auto">
+                      <div 
+                        className={cn(
+                          "px-4 py-2 text-sm cursor-pointer hover:bg-indigo-50",
+                          formData.workorder === 'none' && "bg-indigo-50 font-bold"
+                        )}
+                        onClick={() => {
+                          setFormData(prev => ({ ...prev, workorder: 'none' }));
+                          setIsWoDropdownOpen(false);
+                          setWoSearch('');
+                        }}
+                      >
+                        None (Maintenance/Setup)
+                      </div>
+                      {filteredWOOptions.length > 0 ? (
+                        filteredWOOptions.map(wo => (
+                          <div 
+                            key={wo.id}
+                            className={cn(
+                              "px-4 py-2 text-sm cursor-pointer hover:bg-indigo-50 border-t border-gray-50",
+                              formData.workorder === wo.id && "bg-indigo-50 font-bold"
+                            )}
+                            onClick={() => {
+                              setFormData(prev => ({ ...prev, workorder: wo.id }));
+                              setIsWoDropdownOpen(false);
+                              setWoSearch('');
+                            }}
+                          >
+                            <div className="flex justify-between">
+                              <span className="text-[#f27d26]">{wo.id}</span>
+                              <span className="text-[10px] text-gray-400 uppercase">{wo.process}</span>
+                            </div>
+                            <div className="text-[10px] text-gray-500 truncate">{wo.material}</div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="px-4 py-3 text-xs text-gray-400 italic text-center">
+                          No matching work orders in this workshop
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="sm:col-span-3">
               <label htmlFor="stage" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Active Stage</label>
               <select id="stage" name="stage" value={formData.stage} onChange={handleChange} className="w-full border border-gray-300 px-3 py-2 text-sm font-bold focus:outline-none focus:ring-1 focus:ring-black focus:border-black bg-white">
                 {selectedWO && selectedWO.stages ? (
-                  selectedWO.stages.map((s: any) => (
-                    <option key={s.name} value={s.name}>{s.name} {s.status === 'current' ? '(Current)' : ''}</option>
+                  selectedWO.stages.map((s: any, idx: number) => (
+                    <option key={`${s.name}-${idx}`} value={s.name}>{s.name} {s.status === 'current' ? '(Current)' : ''}</option>
                   ))
                 ) : (
                   <option value="">N/A</option>

@@ -21,25 +21,27 @@ const tabs = [
 function OpenOrdersWorkshop() {
   const { orders } = useWorkOrders();
   const { workshops: masterWorkshops, routing: masterRouting } = useMasterData();
-  const [workshopFilter, setWorkshopFilter] = useState('All');
+  const [workshopFilter, setWorkshopFilter] = useState(localStorage.getItem('activeWorkshop') || 'All');
   const [stageFilter, setStageFilter] = useState('All');
   const [woFilter, setWoFilter] = useState('');
   
   const openOrders = orders.filter(o => o.status !== 'Completed' && o.status !== 'Canceled');
   
   // Use workshops from master data
-  const workshopOptions = masterWorkshops.map(w => w.name).sort();
+  const workshopOptions = useMemo(() => {
+    return Array.from(new Set(masterWorkshops.map(w => w.name?.trim()).filter(Boolean))).sort();
+  }, [masterWorkshops]);
 
   // Get stages related to the selected workshop from routing master and workshop master
   const stageOptions = useMemo(() => {
     const stagesFromRouting = masterRouting
       .filter(r => workshopFilter === 'All' || r.workshopId?.trim() === workshopFilter.trim())
-      .map(r => r.stageName)
+      .map(r => r.stageName?.trim())
       .filter(Boolean);
     
     const stagesFromWorkshops = masterWorkshops
       .filter(w => workshopFilter === 'All' || w.name?.trim() === workshopFilter.trim())
-      .map(w => w.stageName)
+      .map(w => w.stageName?.trim())
       .filter(Boolean);
 
     return Array.from(new Set([...stagesFromRouting, ...stagesFromWorkshops])).sort();
@@ -62,7 +64,7 @@ function OpenOrdersWorkshop() {
 
   // Group orders by stage
   const stageGroups = filteredOrders.reduce((acc: Record<string, any[]>, order) => {
-    const stage = order.stage || 'Unassigned';
+    const stage = (order.stage || 'Unassigned').trim();
     if (!acc[stage]) acc[stage] = [];
     acc[stage].push(order);
     return acc;
@@ -89,7 +91,9 @@ function OpenOrdersWorkshop() {
             id="workshop-filter"
             value={workshopFilter}
             onChange={(e) => {
-              setWorkshopFilter(e.target.value);
+              const val = e.target.value;
+              setWorkshopFilter(val);
+              if (val !== 'All') localStorage.setItem('activeWorkshop', val);
               setStageFilter('All');
             }}
             className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md bg-white border"
@@ -213,14 +217,20 @@ function OpenOrdersWorkshop() {
 
 function WorkOrderExecution() {
   const { orders, updateOrder } = useWorkOrders();
-  const { routing } = useMasterData();
+  const { routing, workshops } = useMasterData();
+  const [workshopFilter, setWorkshopFilter] = useState(localStorage.getItem('activeWorkshop') || 'All');
   const [stageFilter, setStageFilter] = useState('');
   const [woFilter, setWoFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('Not Complete');
 
-  const uniqueStages = Array.from(new Set(routing.map(r => r.stageName).filter(Boolean))).sort();
+  const uniqueStages = Array.from(new Set(routing.map(r => r.stageName?.trim()).filter(Boolean))).sort();
+  const workshopOptions = useMemo(() => {
+    return Array.from(new Set(workshops.map(w => w.name?.trim()).filter(Boolean))).sort();
+  }, [workshops]);
 
   const filteredOrders = orders.filter(wo => {
+    const matchWorkshop = workshopFilter === 'All' || wo.workshop === workshopFilter || 
+      wo.stages?.find((s: any) => s.status === 'current')?.workshop === workshopFilter;
     const matchStage = stageFilter === '' || (wo.stage?.toLowerCase() || '').includes(stageFilter.toLowerCase());
     const matchWO = woFilter === '' || (wo.id?.toLowerCase() || '').includes(woFilter.toLowerCase());
     
@@ -231,7 +241,7 @@ function WorkOrderExecution() {
       matchStatus = wo.status !== 'Completed';
     }
     
-    return matchStage && matchWO && matchStatus;
+    return matchWorkshop && matchStage && matchWO && matchStatus;
   });
 
   const handleStartStage = async (wo: any) => {
@@ -302,7 +312,25 @@ function WorkOrderExecution() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
+        <div className="w-full">
+          <label htmlFor="workshop-filter-exec" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Filter by Workshop</label>
+          <select
+            id="workshop-filter-exec"
+            value={workshopFilter}
+            onChange={(e) => {
+              const val = e.target.value;
+              setWorkshopFilter(val);
+              if (val !== 'All') localStorage.setItem('activeWorkshop', val);
+            }}
+            className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md bg-white border"
+          >
+            <option value="All">All Workshops</option>
+            {workshopOptions.map(ws => (
+              <option key={ws} value={ws}>{ws}</option>
+            ))}
+          </select>
+        </div>
         <div className="w-full">
           <label htmlFor="wo-filter" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Filter by WO No</label>
           <div className="relative">
@@ -354,7 +382,7 @@ function WorkOrderExecution() {
             <option value="Complete">Complete</option>
           </select>
         </div>
-        <div className="sm:col-span-3 text-right text-sm text-gray-500">
+        <div className="sm:col-span-4 text-right text-sm text-gray-500">
           Showing {filteredOrders.length} of {orders.length} orders
         </div>
       </div>
@@ -409,7 +437,7 @@ function WorkOrderExecution() {
           <div className="px-4 py-5 sm:p-6 overflow-x-auto">
             <div className="flex items-center justify-between min-w-max">
               {wo.stages?.map((stage, index) => (
-                <React.Fragment key={stage.name}>
+                <React.Fragment key={`${stage.name}-${index}`}>
                   <div className="flex flex-col items-center">
                     <div className={cn(
                       "flex items-center justify-center w-10 h-10 rounded-full border-2",
