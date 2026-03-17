@@ -300,6 +300,12 @@ export default function MasterData() {
         }
       };
     }
+    if (col.accessor === 'supervisor') {
+      return {
+        ...col,
+        options: operators.map(o => o.name)
+      };
+    }
     return col;
   });
 
