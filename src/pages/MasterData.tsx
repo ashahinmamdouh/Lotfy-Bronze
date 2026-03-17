@@ -264,10 +264,7 @@ export default function MasterData() {
       return { ...col, options: processes.map(p => p.type) };
     }
     if (col.accessor === 'workshopId') {
-      return { ...col, options: workshops.map(w => w.name) };
-    }
-    if (col.accessor === 'stageName') {
-      return { ...col, options: Array.from(new Set(workshops.map(w => w.stageName).filter(Boolean))) };
+      return { ...col, options: workshops.map(w => w.name).sort() };
     }
     if (col.accessor === 'productCategory') {
       return { ...col, options: ['Bars', 'Bushings', 'Plates', 'Custom'] };
@@ -286,13 +283,17 @@ export default function MasterData() {
       return {
         ...col,
         header: 'Associated Stages',
-        render: (_: any, workshop: any) => {
-          const associatedStages = Array.from(new Set(
-            routing
-              .filter(r => r.workshopId === workshop.name)
-              .map(r => r.stageName)
-              .filter(Boolean)
-          ));
+        render: (val: any, workshop: any) => {
+          const stagesFromRouting = routing
+            .filter(r => r.workshopId?.trim() === workshop.name?.trim())
+            .map(r => r.stageName)
+            .filter(Boolean);
+          
+          const allStages = new Set(stagesFromRouting);
+          if (val) allStages.add(val);
+          
+          const associatedStages = Array.from(allStages);
+          
           return associatedStages.length > 0 
             ? associatedStages.join(', ') 
             : <span className="text-gray-400 italic">No stages assigned</span>;

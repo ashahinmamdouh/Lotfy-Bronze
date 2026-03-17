@@ -30,20 +30,20 @@ function OpenOrdersWorkshop() {
   // Use workshops from master data
   const workshopOptions = masterWorkshops.map(w => w.name).sort();
 
-  // Get stages related to the selected workshop from routing master
+  // Get stages related to the selected workshop from routing master and workshop master
   const stageOptions = useMemo(() => {
-    if (workshopFilter === 'All') {
-      // If no workshop selected, show all unique stages from routing
-      return Array.from(new Set(masterRouting.map(r => r.stageName).filter(Boolean))).sort();
-    }
-    // If workshop selected, show only stages associated with that workshop in routing
-    return Array.from(new Set(
-      masterRouting
-        .filter(r => r.workshopId === workshopFilter)
-        .map(r => r.stageName)
-        .filter(Boolean)
-    )).sort();
-  }, [workshopFilter, masterRouting]);
+    const stagesFromRouting = masterRouting
+      .filter(r => workshopFilter === 'All' || r.workshopId?.trim() === workshopFilter.trim())
+      .map(r => r.stageName)
+      .filter(Boolean);
+    
+    const stagesFromWorkshops = masterWorkshops
+      .filter(w => workshopFilter === 'All' || w.name?.trim() === workshopFilter.trim())
+      .map(w => w.stageName)
+      .filter(Boolean);
+
+    return Array.from(new Set([...stagesFromRouting, ...stagesFromWorkshops])).sort();
+  }, [workshopFilter, masterRouting, masterWorkshops]);
 
   // Reset stage filter if it's no longer valid for the selected workshop
   useEffect(() => {
