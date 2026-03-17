@@ -179,7 +179,7 @@ function OpenOrdersList({ orders }: { orders: any[] }) {
                           "px-2 inline-flex text-xs leading-5 font-semibold rounded-full",
                           order.status === 'In Production' ? "bg-blue-100 text-blue-800" : "bg-yellow-100 text-yellow-800"
                         )}>
-                          {order.status}
+                          {order.status === 'In Production' ? (order.workshop || 'In Production') : (order.status || 'Planned')}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

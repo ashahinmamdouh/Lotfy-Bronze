@@ -198,7 +198,7 @@ function OpenOrdersWorkshop() {
                                         order.status === 'Planned' ? "bg-indigo-100 text-indigo-700" :
                                         "bg-gray-100 text-gray-700"
                                       )}>
-                                        {order.status || 'Planned'}
+                                        {order.status === 'In Production' ? (order.workshop || 'In Production') : (order.status || 'Planned')}
                                       </span>
                                       {order.status === 'In Production' && (
                                         <span className="flex h-2 w-2 rounded-full bg-blue-600 animate-ping" title="Worker Active" />
@@ -431,7 +431,7 @@ function WorkOrderExecution() {
                     wo.status === 'Planned' ? "bg-indigo-100 text-indigo-700" :
                     "bg-gray-100 text-gray-700"
                   )}>
-                    {wo.status || 'Planned'}
+                    {wo.status === 'In Production' ? (wo.workshop || 'In Production') : (wo.status || 'Planned')}
                   </span>
                   {wo.status === 'In Production' && (
                     <span className="flex h-2 w-2 rounded-full bg-blue-600 animate-ping" title="Worker Active" />
