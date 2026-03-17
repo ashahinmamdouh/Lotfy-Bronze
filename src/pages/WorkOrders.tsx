@@ -880,6 +880,7 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => Promis
                                     OD: <span className="font-bold text-gray-700">{match.od}mm</span> | 
                                     ID: <span className="font-bold text-gray-700">{match.id}mm</span> | 
                                     L: <span className="font-bold text-gray-700">{match.length}mm</span> | 
+                                    Total Qty: <span className="font-bold text-gray-700">{match.qty} {match.unit}</span> | 
                                     Available: <span className="font-bold text-indigo-600">{match.available} {match.unit}</span>
                                   </div>
                                   <div className="text-[10px] text-indigo-600 font-bold uppercase mt-2 px-2 py-0.5 bg-indigo-50 inline-block">
