@@ -38,13 +38,19 @@ function WorkshopRecord() {
   const [timerStart, setTimerStart] = useState<number | null>(null);
   const [woSearch, setWoSearch] = useState('');
   const [isWoDropdownOpen, setIsWoDropdownOpen] = useState(false);
+  const [workshopSearch, setWorkshopSearch] = useState('');
+  const [isWorkshopDropdownOpen, setIsWorkshopDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const workshopDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsWoDropdownOpen(false);
+      }
+      if (workshopDropdownRef.current && !workshopDropdownRef.current.contains(event.target as Node)) {
+        setIsWorkshopDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -53,16 +59,13 @@ function WorkshopRecord() {
 
   // Set initial values from master data
   useEffect(() => {
-    if (workshops.length > 0 && !formData.workshop) {
-      setFormData(prev => ({ ...prev, workshop: workshops[0].name }));
-    }
     if (machines.length > 0 && !formData.machine) {
       setFormData(prev => ({ ...prev, machine: machines[0].name }));
     }
     if (operators.length > 0 && !formData.operator) {
       setFormData(prev => ({ ...prev, operator: operators[0].name }));
     }
-  }, [workshops, machines, operators]);
+  }, [machines, operators]);
 
   const selectedWO = useMemo(() => {
     return orders.find(o => o.id === formData.workorder);
@@ -98,7 +101,21 @@ function WorkshopRecord() {
         if (prev.workorder !== 'none') {
           const order = orders.find(o => o.id === prev.workorder);
           const currentStage = order?.stages?.find((s: any) => s.status === 'current');
-          if (currentStage?.workshop !== value) {
+          const clean = (s: string) => s?.trim().toLowerCase() || '';
+          const targetWorkshop = clean(value);
+          
+          const woWorkshop = clean(order?.workshop);
+          const stageWorkshop = clean(currentStage?.workshop);
+          const stageName = clean(currentStage?.name);
+
+          const isMatch = (woWorkshop === targetWorkshop || stageWorkshop === targetWorkshop || stageName === targetWorkshop) ||
+                         (targetWorkshop.length > 2 && (
+                           (woWorkshop && (woWorkshop.includes(targetWorkshop) || targetWorkshop.includes(woWorkshop))) ||
+                           (stageWorkshop && (stageWorkshop.includes(targetWorkshop) || targetWorkshop.includes(stageWorkshop))) ||
+                           (stageName && (stageName.includes(targetWorkshop) || targetWorkshop.includes(stageName)))
+                         ));
+          
+          if (!isMatch) {
             newData.workorder = 'none';
           }
         }
@@ -108,15 +125,43 @@ function WorkshopRecord() {
     });
   };
 
+  const filteredWorkshops = useMemo(() => {
+    if (!workshopSearch) return workshops;
+    const search = workshopSearch.toLowerCase();
+    return workshops.filter(w => 
+      (w.name?.toLowerCase() || '').includes(search) ||
+      (w.stageName?.toLowerCase() || '').includes(search)
+    );
+  }, [workshops, workshopSearch]);
+
   const filteredWOOptions = useMemo(() => {
+    const clean = (s: string) => s?.trim().toLowerCase() || '';
+    const targetWorkshop = clean(formData.workshop);
+
     const availableOrders = orders
-      .filter(o => o.status !== 'Completed')
+      .filter(o => o.status !== 'Completed' && o.status !== 'Canceled')
       .filter(o => {
-        if (!formData.workshop) return true;
-        // Check both order.workshop and current stage workshop for robustness
-        if (o.workshop === formData.workshop) return true;
+        if (!targetWorkshop) return false;
+        
         const currentStage = o.stages?.find((s: any) => s.status === 'current');
-        return currentStage?.workshop === formData.workshop;
+        const woWorkshop = clean(o.workshop);
+        const stageWorkshop = clean(currentStage?.workshop);
+        const stageName = clean(currentStage?.name);
+
+        // 1. Exact matches
+        if (woWorkshop === targetWorkshop || stageWorkshop === targetWorkshop || stageName === targetWorkshop) {
+          return true;
+        }
+        
+        // 2. Substring matches (e.g., "Machining" matches "Machining Workshop")
+        // Only if strings are not empty to avoid false positives
+        if (targetWorkshop.length > 2) {
+          if (woWorkshop && (woWorkshop.includes(targetWorkshop) || targetWorkshop.includes(woWorkshop))) return true;
+          if (stageWorkshop && (stageWorkshop.includes(targetWorkshop) || targetWorkshop.includes(stageWorkshop))) return true;
+          if (stageName && (stageName.includes(targetWorkshop) || targetWorkshop.includes(stageName))) return true;
+        }
+
+        return false;
       });
 
     if (!woSearch) return availableOrders;
@@ -129,7 +174,20 @@ function WorkshopRecord() {
     );
   }, [orders, formData.workshop, woSearch]);
 
-  const handleStartTimer = () => {
+  // Automatically select the first available Work Order when workshop changes
+  useEffect(() => {
+    if (filteredWOOptions.length > 0 && (formData.workorder === 'none' || !orders.find(o => o.id === formData.workorder))) {
+      // Check if the current workorder is actually valid for this workshop
+      const currentOrder = orders.find(o => o.id === formData.workorder);
+      const isCurrentValid = currentOrder && filteredWOOptions.some(wo => wo.id === currentOrder.id);
+      
+      if (!isCurrentValid) {
+        setFormData(prev => ({ ...prev, workorder: filteredWOOptions[0].id }));
+      }
+    }
+  }, [formData.workshop, filteredWOOptions, orders]);
+
+  const handleStartTimer = async () => {
     setTimerActive(true);
     setTimerStart(Date.now());
     const now = new Date();
@@ -137,6 +195,15 @@ function WorkshopRecord() {
       ...prev,
       startTime: now.toTimeString().slice(0, 5)
     }));
+
+    // Update Work Order status to 'In Production' if a WO is selected
+    if (selectedWO && selectedWO.status !== 'In Production') {
+      try {
+        await updateOrder(selectedWO.id, { status: 'In Production' });
+      } catch (error) {
+        console.error('Error updating WO status to In Production:', error);
+      }
+    }
   };
 
   const handleStopTimer = () => {
@@ -165,6 +232,17 @@ function WorkshopRecord() {
         createdAt: new Date().toISOString()
       });
 
+      // Update Work Order status based on task status
+      if (selectedWO) {
+        if (formData.status === 'On Hold') {
+          await updateOrder(selectedWO.id, { status: 'On Hold' });
+        } else if (formData.status === 'Rejected') {
+          await updateOrder(selectedWO.id, { status: 'Rejected' });
+        } else if (formData.status === 'Under Process') {
+          await updateOrder(selectedWO.id, { status: 'In Production' });
+        }
+      }
+
       // If status is "Completed", update the Work Order stages
       if (formData.status === 'Completed' && selectedWO) {
         // Check if this is a Quality or Inspection stage
@@ -184,7 +262,9 @@ function WorkshopRecord() {
               currentStages[currentIndex + 1].status = 'current';
               await updateOrder(selectedWO.id, {
                 stages: currentStages,
-                stage: currentStages[currentIndex + 1].name
+                stage: currentStages[currentIndex + 1].name,
+                workshop: currentStages[currentIndex + 1].workshop,
+                status: 'In Production'
               });
             } else {
               // All stages completed
@@ -237,17 +317,65 @@ function WorkshopRecord() {
 
           <div className="mb-8 p-4 bg-indigo-50 border border-indigo-100 rounded-lg">
             <label htmlFor="workshop" className="block text-xs font-bold text-indigo-600 uppercase tracking-wider mb-2">Active Workshop</label>
-            <select 
-              id="workshop" 
-              name="workshop" 
-              value={formData.workshop} 
-              onChange={handleChange} 
-              className="w-full border border-indigo-200 px-4 py-3 text-lg font-bold text-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white rounded-md shadow-sm"
-            >
-              {workshops.map(w => (
-                <option key={w._id} value={w.name}>{w.name} {w.stageName ? `(${w.stageName})` : ''}</option>
-              ))}
-            </select>
+            <div className="relative" ref={workshopDropdownRef}>
+              <div 
+                className="w-full border border-indigo-200 px-4 py-3 text-lg font-bold text-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white rounded-md shadow-sm cursor-pointer flex justify-between items-center"
+                onClick={() => setIsWorkshopDropdownOpen(!isWorkshopDropdownOpen)}
+              >
+                <span>
+                  {formData.workshop || 'Select Workshop...'}
+                </span>
+                <ChevronDown className={cn("h-5 w-5 text-indigo-400 transition-transform", isWorkshopDropdownOpen && "transform rotate-180")} />
+              </div>
+
+              {isWorkshopDropdownOpen && (
+                <div className="absolute z-50 mt-1 w-full bg-white border border-indigo-200 shadow-xl rounded-md overflow-hidden">
+                  <div className="p-2 border-b border-indigo-50 bg-indigo-50/30">
+                    <div className="relative">
+                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-indigo-400" />
+                      <input
+                        type="text"
+                        className="w-full pl-8 pr-3 py-2 text-sm border border-indigo-100 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="Search Workshop..."
+                        value={workshopSearch}
+                        onChange={(e) => setWorkshopSearch(e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+                  <div className="max-h-60 overflow-y-auto">
+                    {filteredWorkshops.length > 0 ? (
+                      filteredWorkshops.map(w => (
+                        <div 
+                          key={w._id}
+                          className={cn(
+                            "px-4 py-3 text-base cursor-pointer hover:bg-indigo-50 border-b border-indigo-50 last:border-0",
+                            formData.workshop === w.name && "bg-indigo-50 font-bold"
+                          )}
+                          onClick={() => {
+                            handleChange({ target: { name: 'workshop', value: w.name } } as any);
+                            setIsWorkshopDropdownOpen(false);
+                            setWorkshopSearch('');
+                          }}
+                        >
+                          <div className="flex justify-between items-center">
+                            <span>{w.name}</span>
+                            {w.stageName && (
+                              <span className="text-xs font-normal text-indigo-400 italic">({w.stageName})</span>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="px-4 py-4 text-sm text-gray-400 italic text-center">
+                        No workshops found
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Stage Progress Stepper */}
@@ -335,86 +463,72 @@ function WorkshopRecord() {
                       </div>
                     </div>
                     <div className="max-h-60 overflow-y-auto">
-                      <div 
-                        className={cn(
-                          "px-4 py-2 text-sm cursor-pointer hover:bg-indigo-50",
-                          formData.workorder === 'none' && "bg-indigo-50 font-bold"
-                        )}
-                        onClick={() => {
-                          setFormData(prev => ({ ...prev, workorder: 'none' }));
-                          setIsWoDropdownOpen(false);
-                          setWoSearch('');
-                        }}
-                      >
-                        None (Maintenance/Setup)
-                      </div>
                       {filteredWOOptions.length > 0 ? (
-                        filteredWOOptions.map(wo => (
+                        <>
+                          {filteredWOOptions.map(wo => (
+                            <div 
+                              key={wo.id}
+                              className={cn(
+                                "px-4 py-2 text-sm cursor-pointer hover:bg-indigo-50 border-b border-gray-50",
+                                formData.workorder === wo.id && "bg-indigo-50 font-bold"
+                              )}
+                              onClick={() => {
+                                setFormData(prev => ({ ...prev, workorder: wo.id }));
+                                setIsWoDropdownOpen(false);
+                                setWoSearch('');
+                              }}
+                            >
+                              <div className="flex justify-between items-center">
+                                <span className="text-[#f27d26] font-bold">{wo.id}</span>
+                                <div className="flex gap-1">
+                                  <span className="px-1.5 py-0.5 bg-indigo-100 text-indigo-700 text-[9px] font-bold rounded uppercase">
+                                    {wo.stages?.find((s: any) => s.status === 'current')?.name || 'No Stage'}
+                                  </span>
+                                  <span className="text-[10px] text-gray-400 uppercase">{wo.process}</span>
+                                </div>
+                              </div>
+                              <div className="text-[10px] text-gray-500 truncate">{wo.material}</div>
+                            </div>
+                          ))}
                           <div 
-                            key={wo.id}
                             className={cn(
-                              "px-4 py-2 text-sm cursor-pointer hover:bg-indigo-50 border-t border-gray-50",
-                              formData.workorder === wo.id && "bg-indigo-50 font-bold"
+                              "px-4 py-2 text-sm cursor-pointer hover:bg-indigo-50 border-t-2 border-gray-100 mt-1 italic text-gray-500",
+                              formData.workorder === 'none' && "bg-indigo-50 font-bold"
                             )}
                             onClick={() => {
-                              setFormData(prev => ({ ...prev, workorder: wo.id }));
+                              setFormData(prev => ({ ...prev, workorder: 'none' }));
                               setIsWoDropdownOpen(false);
                               setWoSearch('');
                             }}
                           >
-                            <div className="flex justify-between">
-                              <span className="text-[#f27d26]">{wo.id}</span>
-                              <span className="text-[10px] text-gray-400 uppercase">{wo.process}</span>
-                            </div>
-                            <div className="text-[10px] text-gray-500 truncate">{wo.material}</div>
+                            None (Maintenance/Setup)
                           </div>
-                        ))
+                        </>
                       ) : (
-                        <div className="px-4 py-3 text-xs text-gray-400 italic text-center">
-                          No matching work orders in this workshop
-                        </div>
+                        <>
+                          <div 
+                            className={cn(
+                              "px-4 py-2 text-sm cursor-pointer hover:bg-indigo-50",
+                              formData.workorder === 'none' && "bg-indigo-50 font-bold"
+                            )}
+                            onClick={() => {
+                              setFormData(prev => ({ ...prev, workorder: 'none' }));
+                              setIsWoDropdownOpen(false);
+                              setWoSearch('');
+                            }}
+                          >
+                            None (Maintenance/Setup)
+                          </div>
+                          <div className="px-4 py-3 text-xs text-gray-400 italic text-center">
+                            No matching work orders in this workshop
+                          </div>
+                        </>
                       )}
                     </div>
                   </div>
                 )}
               </div>
             </div>
-
-            <div className="sm:col-span-3">
-              <label htmlFor="stage" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Active Stage</label>
-              <select id="stage" name="stage" value={formData.stage} onChange={handleChange} className="w-full border border-gray-300 px-3 py-2 text-sm font-bold focus:outline-none focus:ring-1 focus:ring-black focus:border-black bg-white">
-                {selectedWO && selectedWO.stages ? (
-                  selectedWO.stages.map((s: any, idx: number) => (
-                    <option key={`${s.name}-${idx}`} value={s.name}>{s.name} {s.status === 'current' ? '(Current)' : ''}</option>
-                  ))
-                ) : (
-                  <option value="">N/A</option>
-                )}
-              </select>
-            </div>
-
-            {/* Routing Reference Info */}
-            {currentRoutingInfo && (
-              <div className="sm:col-span-6 grid grid-cols-3 gap-4 p-4 bg-gray-50 border border-gray-100 mb-2">
-                <div>
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Std Time (min)</span>
-                  <span className="text-sm font-mono font-bold text-gray-700">{currentRoutingInfo.stdTime || 'N/A'}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Operators Req.</span>
-                  <span className="text-sm font-mono font-bold text-gray-700">{currentRoutingInfo.operatorsRequired || 'N/A'}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">QC Required</span>
-                  <span className={cn(
-                    "text-xs font-bold uppercase px-2 py-0.5 rounded-full",
-                    currentRoutingInfo.qcRequired === 'Yes' ? "bg-blue-100 text-blue-700" : "bg-gray-200 text-gray-600"
-                  )}>
-                    {currentRoutingInfo.qcRequired || 'No'}
-                  </span>
-                </div>
-              </div>
-            )}
 
             <div className="sm:col-span-3">
               <label htmlFor="operator" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Operator</label>

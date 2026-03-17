@@ -99,10 +99,17 @@ export const WorkOrderProvider = ({ children }: { children: React.ReactNode }) =
     if (!user) return;
 
     try {
-      // Fetch routing master data to populate stages
-      const routingSnap = await getDocs(collection(db, 'master_routing'));
+      // Fetch routing and workshop master data to populate stages correctly
+      const [routingSnap, workshopsSnap] = await Promise.all([
+        getDocs(collection(db, 'master_routing')),
+        getDocs(collection(db, 'master_workshops'))
+      ]);
+
       const allRouting: any[] = [];
       routingSnap.forEach(doc => allRouting.push({ id: doc.id, ...doc.data() }));
+
+      const allWorkshops: any[] = [];
+      workshopsSnap.forEach(doc => allWorkshops.push({ id: doc.id, ...doc.data() }));
 
       const formattedOrders = newOrders.map(order => {
         // Find all routing stages that match the process type of the order
@@ -111,19 +118,27 @@ export const WorkOrderProvider = ({ children }: { children: React.ReactNode }) =
           .sort((a, b) => Number(a.stageNo) - Number(b.stageNo));
 
         const stages = orderRouting.length > 0 
-          ? orderRouting.map((r, idx) => ({
-              name: r.stageName || r.processType || 'Unknown Stage',
-              status: idx === 0 ? 'current' : 'pending' as 'completed' | 'current' | 'pending',
-              workshop: r.workshopId
-            }))
+          ? orderRouting.map((r, idx) => {
+              // Try to find a workshop that matches the routing's workshopId
+              const matchedWorkshop = allWorkshops.find(w => 
+                w.name?.trim().toLowerCase() === r.workshopId?.trim().toLowerCase() ||
+                w.stageName?.trim().toLowerCase() === r.workshopId?.trim().toLowerCase()
+              );
+
+              return {
+                name: r.stageName || r.processType || 'Unknown Stage',
+                status: idx === 0 ? 'current' : 'pending' as 'completed' | 'current' | 'pending',
+                workshop: matchedWorkshop ? matchedWorkshop.name : (r.workshopId || 'Unassigned')
+              };
+            })
           : [
-              { name: 'Material Prep', status: 'current' as const, workshop: 'Foundry A' },
-              { name: 'Furnace Melting', status: 'pending' as const, workshop: 'Foundry A' },
-              { name: order.process || 'Casting', status: 'pending' as const, workshop: 'Foundry A' },
-              { name: 'Cooling', status: 'pending' as const, workshop: 'Foundry A' },
-              { name: 'Rough Machining', status: 'pending' as const, workshop: 'Machining Workshop' },
-              { name: 'Final Machining', status: 'pending' as const, workshop: 'Machining Workshop' },
-              { name: 'Inspection', status: 'pending' as const, workshop: 'Quality Workshop' },
+              { name: 'Material Prep', status: 'current' as const, workshop: allWorkshops.find(w => w.name.includes('Foundry'))?.name || 'Foundry A' },
+              { name: 'Furnace Melting', status: 'pending' as const, workshop: allWorkshops.find(w => w.name.includes('Foundry'))?.name || 'Foundry A' },
+              { name: order.process || 'Casting', status: 'pending' as const, workshop: allWorkshops.find(w => w.name.includes('Foundry'))?.name || 'Foundry A' },
+              { name: 'Cooling', status: 'pending' as const, workshop: allWorkshops.find(w => w.name.includes('Foundry'))?.name || 'Foundry A' },
+              { name: 'Rough Machining', status: 'pending' as const, workshop: allWorkshops.find(w => w.name.includes('Machining'))?.name || 'Machining Workshop' },
+              { name: 'Final Machining', status: 'pending' as const, workshop: allWorkshops.find(w => w.name.includes('Machining'))?.name || 'Machining Workshop' },
+              { name: 'Inspection', status: 'pending' as const, workshop: allWorkshops.find(w => w.name.includes('Quality'))?.name || 'Quality Workshop' },
             ];
 
         // Generate Full Name: WO No, Material, Dimension, Quantity, Mold No
@@ -142,6 +157,7 @@ export const WorkOrderProvider = ({ children }: { children: React.ReactNode }) =
           authorId: user.uid,
           stages,
           stage: stages[0].name,
+          workshop: stages[0].workshop, // Set top-level workshop for better filtering
           fullName,
           moldNo: order.moldNo || order.mold || ''
         };

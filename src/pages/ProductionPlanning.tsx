@@ -191,6 +191,18 @@ function OpenOrdersWorkshop() {
                                       )}>
                                         {order.priority}
                                       </span>
+                                      <span className={cn(
+                                        "px-2 py-0.5 text-[10px] font-bold rounded uppercase",
+                                        order.status === 'Completed' ? "bg-green-100 text-green-700" :
+                                        order.status === 'In Production' ? "bg-blue-100 text-blue-700 animate-pulse" :
+                                        order.status === 'Planned' ? "bg-indigo-100 text-indigo-700" :
+                                        "bg-gray-100 text-gray-700"
+                                      )}>
+                                        {order.status || 'Planned'}
+                                      </span>
+                                      {order.status === 'In Production' && (
+                                        <span className="flex h-2 w-2 rounded-full bg-blue-600 animate-ping" title="Worker Active" />
+                                      )}
                                     </div>
                                   </div>
                                   <div className="text-right">
@@ -246,7 +258,11 @@ function WorkOrderExecution() {
 
   const handleStartStage = async (wo: any) => {
     if (wo.status === 'Planned') {
-      await updateOrder(wo.id, { status: 'In Production' });
+      const currentStage = wo.stages.find((s: any) => s.status === 'current');
+      await updateOrder(wo.id, { 
+        status: 'In Production',
+        workshop: currentStage?.workshop || wo.workshop
+      });
     }
   };
 
@@ -271,6 +287,7 @@ function WorkOrderExecution() {
         await updateOrder(wo.id, { 
           stages: newStages,
           stage: newStages[currentIndex + 1].name,
+          workshop: newStages[currentIndex + 1].workshop,
           status: isLastStage ? 'Completed' : 'In Production'
         });
       } else {
@@ -293,6 +310,7 @@ function WorkOrderExecution() {
       await updateOrder(wo.id, { 
         stages: newStages,
         stage: newStages[currentIndex - 1].name,
+        workshop: newStages[currentIndex - 1].workshop,
         status: 'In Production'
       });
     }
@@ -306,6 +324,7 @@ function WorkOrderExecution() {
     await updateOrder(wo.id, { 
       stages: newStages,
       stage: newStages[0].name,
+      workshop: newStages[0].workshop,
       status: 'In Production'
     });
   };
@@ -400,9 +419,25 @@ function WorkOrderExecution() {
       {filteredOrders.map((wo) => (
         <div key={wo.id} className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
           <div className="px-4 py-5 sm:px-6 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
-            <div>
-              <h3 className="text-lg leading-6 font-medium text-gray-900">{wo.id}</h3>
-              <p className="mt-1 max-w-2xl text-sm text-gray-500">{wo.material} - {wo.process}</p>
+            <div className="flex items-center gap-4">
+              <div>
+                <h3 className="text-lg leading-6 font-medium text-gray-900">{wo.id}</h3>
+                <div className="flex items-center gap-2 mt-1">
+                  <p className="text-sm text-gray-500">{wo.material} - {wo.process}</p>
+                  <span className={cn(
+                    "px-2 py-0.5 text-[10px] font-bold rounded uppercase",
+                    wo.status === 'Completed' ? "bg-green-100 text-green-700" :
+                    wo.status === 'In Production' ? "bg-blue-100 text-blue-700 animate-pulse" :
+                    wo.status === 'Planned' ? "bg-indigo-100 text-indigo-700" :
+                    "bg-gray-100 text-gray-700"
+                  )}>
+                    {wo.status || 'Planned'}
+                  </span>
+                  {wo.status === 'In Production' && (
+                    <span className="flex h-2 w-2 rounded-full bg-blue-600 animate-ping" title="Worker Active" />
+                  )}
+                </div>
+              </div>
             </div>
             <div className="flex gap-2">
               <button 
