@@ -307,6 +307,9 @@ function WorkOrderExecution() {
       const newStages = [...wo.stages];
       newStages[currentIndex].status = 'pending';
       newStages[currentIndex - 1].status = 'current';
+      // Increment reworkCount for the stage we're going back to
+      newStages[currentIndex - 1].reworkCount = (newStages[currentIndex - 1].reworkCount || 0) + 1;
+      
       await updateOrder(wo.id, { 
         stages: newStages,
         stage: newStages[currentIndex - 1].name,
@@ -319,7 +322,11 @@ function WorkOrderExecution() {
   const handleRework = async (wo: any) => {
     const newStages = wo.stages.map((s: any, idx: number) => ({
       ...s,
-      status: idx === 0 ? 'current' : 'pending'
+      status: idx === 0 ? 'current' : 'pending',
+      // Increment reworkCount for all stages that were already completed or current
+      reworkCount: (s.status === 'completed' || s.status === 'current') 
+        ? (s.reworkCount || 0) + 1 
+        : (s.reworkCount || 0)
     }));
     await updateOrder(wo.id, { 
       stages: newStages,
@@ -474,13 +481,20 @@ function WorkOrderExecution() {
               {wo.stages?.map((stage, index) => (
                 <React.Fragment key={`${stage.name}-${index}`}>
                   <div className="flex flex-col items-center">
-                    <div className={cn(
-                      "flex items-center justify-center w-10 h-10 rounded-full border-2",
-                      stage.status === 'completed' ? "bg-green-100 border-green-500 text-green-600" :
-                      stage.status === 'current' ? "bg-indigo-100 border-indigo-500 text-indigo-600 font-bold" :
-                      "bg-gray-50 border-gray-300 text-gray-400"
-                    )}>
-                      {index + 1}
+                    <div className="relative">
+                      <div className={cn(
+                        "flex items-center justify-center w-10 h-10 rounded-full border-2",
+                        stage.status === 'completed' ? "bg-green-100 border-green-500 text-green-600" :
+                        stage.status === 'current' ? "bg-indigo-100 border-indigo-500 text-indigo-600 font-bold" :
+                        "bg-gray-50 border-gray-300 text-gray-400"
+                      )}>
+                        {index + 1}
+                      </div>
+                      {(stage.reworkCount || 0) > 0 && (
+                        <div className="absolute -top-1 -right-1 bg-red-600 text-white text-[8px] font-bold rounded-full w-4 h-4 flex items-center justify-center border border-white shadow-sm" title={`Rework count: ${stage.reworkCount}`}>
+                          {stage.reworkCount}
+                        </div>
+                      )}
                     </div>
                     <span className={cn(
                       "mt-2 text-xs text-center w-20",

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
-import { Factory, Play, Square, Save, Search, ChevronDown } from 'lucide-react';
+import { Factory, Play, Square, Save, Search, ChevronDown, RotateCcw } from 'lucide-react';
 import { useWorkOrders } from '../context/WorkOrderContext';
 import { useMasterData } from '../context/MasterDataContext';
 import { useFirebase } from '../context/FirebaseContext';
@@ -226,10 +226,15 @@ function WorkshopRecord() {
     try {
       // Save the workshop record
       try {
+        const currentStage = selectedWO?.stages.find(s => s.name === formData.stage);
+        const reworkCount = currentStage?.reworkCount || 0;
+        
         await addDoc(collection(db, 'workshop_records'), {
           ...formData,
           authorId: user.uid,
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          isRework: reworkCount > 0,
+          reworkCount: reworkCount
         });
       } catch (err) {
         console.error('Error adding workshop record:', err);
@@ -327,11 +332,19 @@ function WorkshopRecord() {
       <form onSubmit={handleSubmit} className="space-y-8">
         <div className="bg-white p-8 border border-gray-200 shadow-sm">
           <div className="flex justify-between items-start mb-8 border-b border-gray-100 pb-6">
-            <div>
-              <h3 className="text-2xl font-serif italic text-gray-900">Workshop Execution</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Log production activities and track stage progress.
-              </p>
+            <div className="flex items-center gap-4">
+              <div>
+                <h3 className="text-2xl font-serif italic text-gray-900">Workshop Execution</h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Log production activities and track stage progress.
+                </p>
+              </div>
+              {selectedWO && selectedWO.stages.find(s => s.name === formData.stage)?.reworkCount > 0 && (
+                <div className="bg-red-100 border border-red-200 text-red-700 px-3 py-1 rounded-full flex items-center gap-2 animate-pulse">
+                  <RotateCcw className="h-4 w-4" />
+                  <span className="text-xs font-bold uppercase tracking-wider">Rework #{selectedWO.stages.find(s => s.name === formData.stage)?.reworkCount}</span>
+                </div>
+              )}
             </div>
           </div>
 

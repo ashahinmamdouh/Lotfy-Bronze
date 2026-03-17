@@ -16,7 +16,7 @@ export interface WorkOrder {
   due: string;
   priority: string;
   status: string;
-  stages: { name: string; status: 'completed' | 'current' | 'pending'; workshop?: string }[];
+  stages: { name: string; status: 'completed' | 'current' | 'pending'; workshop?: string; reworkCount?: number }[];
   createdAt?: string;
   actualWeight?: number;
   deliveryDate?: string;
