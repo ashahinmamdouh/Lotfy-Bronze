@@ -456,6 +456,15 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => Promis
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validation
+    const invalidLine = lines.find(line => !line.product || !line.material || !line.processType);
+    if (invalidLine) {
+      setError("Product, Material, and Process Type are mandatory for all lines.");
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
     setIsSaving(true);
     setError(null);
     
@@ -664,7 +673,7 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => Promis
                   <div className="p-6 space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                       <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Product</label>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Product <span className="text-red-500">*</span></label>
                         <Select
                           value={line.product ? { value: line.product, label: line.product } : null}
                           onChange={(option: any) => handleLineChange(line.id, 'product', option ? option.value : '')}
@@ -694,7 +703,7 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => Promis
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Material</label>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Material <span className="text-red-500">*</span></label>
                         <Select
                           value={line.material ? { value: line.material, label: line.material } : null}
                           onChange={(option: any) => handleLineChange(line.id, 'material', option ? option.value : '')}
@@ -725,7 +734,7 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => Promis
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Process Type</label>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Process Type <span className="text-red-500">*</span></label>
                         <Select
                           value={line.processType ? { value: line.processType, label: line.processType } : null}
                           onChange={(option: any) => handleLineChange(line.id, 'processType', option ? option.value : '')}

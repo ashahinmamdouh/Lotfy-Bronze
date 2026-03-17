@@ -7,7 +7,7 @@ import { useMasterData } from '../context/MasterDataContext';
 import { collection, onSnapshot, query, where, doc, updateDoc, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useFirebase } from '../context/FirebaseContext';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 
 const tabs = [
   { name: 'Work Order Execution', path: 'execution' },
@@ -20,8 +20,9 @@ const tabs = [
 
 function OpenOrdersWorkshop() {
   const { orders } = useWorkOrders();
-  const { workshops: masterWorkshops } = useMasterData();
+  const { workshops: masterWorkshops, routing: masterRouting } = useMasterData();
   const [workshopFilter, setWorkshopFilter] = useState('All');
+  const [stageFilter, setStageFilter] = useState('All');
   const [woFilter, setWoFilter] = useState('');
   
   const openOrders = orders.filter(o => o.status !== 'Completed' && o.status !== 'Canceled');
@@ -29,11 +30,34 @@ function OpenOrdersWorkshop() {
   // Use workshops from master data
   const workshopOptions = masterWorkshops.map(w => w.name).sort();
 
-  // Filter by workshop and WO No
+  // Get stages related to the selected workshop from routing master
+  const stageOptions = useMemo(() => {
+    if (workshopFilter === 'All') {
+      // If no workshop selected, show all unique stages from routing
+      return Array.from(new Set(masterRouting.map(r => r.stageName).filter(Boolean))).sort();
+    }
+    // If workshop selected, show only stages associated with that workshop in routing
+    return Array.from(new Set(
+      masterRouting
+        .filter(r => r.workshopId === workshopFilter)
+        .map(r => r.stageName)
+        .filter(Boolean)
+    )).sort();
+  }, [workshopFilter, masterRouting]);
+
+  // Reset stage filter if it's no longer valid for the selected workshop
+  useEffect(() => {
+    if (stageFilter !== 'All' && !stageOptions.includes(stageFilter)) {
+      setStageFilter('All');
+    }
+  }, [stageOptions, stageFilter]);
+
+  // Filter by workshop, stage and WO No
   const filteredOrders = openOrders.filter(o => {
     const matchWorkshop = workshopFilter === 'All' || o.workshop === workshopFilter;
+    const matchStage = stageFilter === 'All' || o.stage === stageFilter;
     const matchWO = woFilter === '' || (o.id?.toLowerCase() || '').includes(woFilter.toLowerCase());
-    return matchWorkshop && matchWO;
+    return matchWorkshop && matchStage && matchWO;
   });
 
   // Group orders by stage
@@ -44,22 +68,49 @@ function OpenOrdersWorkshop() {
     return acc;
   }, {});
 
-  const stages = Object.keys(stageGroups).sort();
+  // The stages to display should be the ones from the master data if a workshop is selected,
+  // or just the ones present in the filtered orders if "All" is selected.
+  const stagesToDisplay = useMemo(() => {
+    if (workshopFilter === 'All' && stageFilter === 'All') {
+      return Object.keys(stageGroups).sort();
+    }
+    if (stageFilter !== 'All') {
+      return [stageFilter];
+    }
+    return stageOptions;
+  }, [workshopFilter, stageFilter, stageOptions, stageGroups]);
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
         <div className="w-full">
           <label htmlFor="workshop-filter" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Filter by Workshop</label>
           <select
             id="workshop-filter"
             value={workshopFilter}
-            onChange={(e) => setWorkshopFilter(e.target.value)}
+            onChange={(e) => {
+              setWorkshopFilter(e.target.value);
+              setStageFilter('All');
+            }}
             className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md bg-white border"
           >
             <option value="All">All Workshops</option>
             {workshopOptions.map(ws => (
               <option key={ws} value={ws}>{ws}</option>
+            ))}
+          </select>
+        </div>
+        <div className="w-full">
+          <label htmlFor="stage-filter-workshop" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Filter by Stage</label>
+          <select
+            id="stage-filter-workshop"
+            value={stageFilter}
+            onChange={(e) => setStageFilter(e.target.value)}
+            className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md bg-white border"
+          >
+            <option value="All">All Stages</option>
+            {stageOptions.map(s => (
+              <option key={s} value={s}>{s}</option>
             ))}
           </select>
         </div>
@@ -97,50 +148,54 @@ function OpenOrdersWorkshop() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {stages.length === 0 ? (
+                  {stagesToDisplay.length === 0 ? (
                     <tr>
                       <td colSpan={2} className="px-6 py-12 text-center text-sm text-gray-500 italic">
                         No open work orders found for the selected criteria.
                       </td>
                     </tr>
                   ) : (
-                    stages.map((stage) => (
+                    stagesToDisplay.map((stage) => (
                       <tr key={stage}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-indigo-600 bg-gray-50 border-r border-gray-200 align-top">
                           {stage}
                           <div className="text-[10px] text-gray-400 mt-1 uppercase tracking-tighter">
-                            {stageGroups[stage].length} Active Orders
+                            {(stageGroups[stage] || []).length} Active Orders
                           </div>
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-500 p-0">
                           <div className="divide-y divide-gray-100">
-                            {stageGroups[stage].map((order) => (
-                              <div key={order.id} className="p-4 hover:bg-indigo-50 transition-colors flex justify-between items-center">
-                                <div>
-                                  <div className="font-bold text-gray-900">{order.id}</div>
-                                  <div className="text-xs text-gray-500 mt-0.5">
-                                    {order.material} | {order.dimensions} | Qty: {order.qty}
+                            {(stageGroups[stage] || []).length === 0 ? (
+                              <div className="p-4 text-xs text-gray-400 italic">No orders in this stage</div>
+                            ) : (
+                              stageGroups[stage].map((order) => (
+                                <div key={order.id} className="p-4 hover:bg-indigo-50 transition-colors flex justify-between items-center">
+                                  <div>
+                                    <div className="font-bold text-gray-900">{order.id}</div>
+                                    <div className="text-xs text-gray-500 mt-0.5">
+                                      {order.material} | {order.dimensions} | Qty: {order.qty}
+                                    </div>
+                                    <div className="flex gap-2 mt-2">
+                                      <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-[10px] font-bold rounded uppercase">
+                                        {order.workshop || 'No Workshop'}
+                                      </span>
+                                      <span className={cn(
+                                        "px-2 py-0.5 text-[10px] font-bold rounded uppercase",
+                                        order.priority === 'Urgent' ? "bg-red-100 text-red-700" :
+                                        order.priority === 'High' ? "bg-orange-100 text-orange-700" :
+                                        "bg-gray-100 text-gray-700"
+                                      )}>
+                                        {order.priority}
+                                      </span>
+                                    </div>
                                   </div>
-                                  <div className="flex gap-2 mt-2">
-                                    <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-[10px] font-bold rounded uppercase">
-                                      {order.workshop || 'No Workshop'}
-                                    </span>
-                                    <span className={cn(
-                                      "px-2 py-0.5 text-[10px] font-bold rounded uppercase",
-                                      order.priority === 'Urgent' ? "bg-red-100 text-red-700" :
-                                      order.priority === 'High' ? "bg-orange-100 text-orange-700" :
-                                      "bg-gray-100 text-gray-700"
-                                    )}>
-                                      {order.priority}
-                                    </span>
+                                  <div className="text-right">
+                                    <div className="text-[10px] font-bold text-gray-400 uppercase">Due Date</div>
+                                    <div className="text-xs font-mono font-bold text-gray-700">{order.due}</div>
                                   </div>
                                 </div>
-                                <div className="text-right">
-                                  <div className="text-[10px] font-bold text-gray-400 uppercase">Due Date</div>
-                                  <div className="text-xs font-mono font-bold text-gray-700">{order.due}</div>
-                                </div>
-                              </div>
-                            ))}
+                              ))
+                            )}
                           </div>
                         </td>
                       </tr>

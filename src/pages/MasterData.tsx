@@ -281,6 +281,27 @@ export default function MasterData() {
     return col;
   });
 
+  const dynamicWorkshopsColumns = workshopsColumns.map(col => {
+    if (col.accessor === 'stageName') {
+      return {
+        ...col,
+        header: 'Associated Stages',
+        render: (_: any, workshop: any) => {
+          const associatedStages = Array.from(new Set(
+            routing
+              .filter(r => r.workshopId === workshop.name)
+              .map(r => r.stageName)
+              .filter(Boolean)
+          ));
+          return associatedStages.length > 0 
+            ? associatedStages.join(', ') 
+            : <span className="text-gray-400 italic">No stages assigned</span>;
+        }
+      };
+    }
+    return col;
+  });
+
   const dynamicMachinesColumns = machinesColumns.map(col => {
     if (col.accessor === 'workshop') {
       return { ...col, options: workshops.map(w => w.name) };
@@ -328,7 +349,7 @@ export default function MasterData() {
           <Route path="products" element={<DataTable columns={productsColumns} data={products} onAdd={handleAddProduct} onAddMultiple={handleUploadProducts} onEdit={handleEditProduct} onDelete={handleDeleteProduct} searchPlaceholder="Search Products..." exportFileName="Products" />} />
           <Route path="processes" element={<DataTable columns={processesColumns} data={processes} onAdd={handleAddProcess} onAddMultiple={handleUploadProcesses} onEdit={handleEditProcess} onDelete={handleDeleteProcess} searchPlaceholder="Search Processes..." exportFileName="Processes" />} />
           <Route path="status" element={<DataTable columns={statusColumns} data={status} onAdd={handleAddStatus} onAddMultiple={handleUploadStatus} onEdit={handleEditStatus} onDelete={handleDeleteStatus} searchPlaceholder="Search Status Types..." exportFileName="Status Types" />} />
-          <Route path="workshops" element={<DataTable columns={workshopsColumns} data={workshops} onAdd={handleAddWorkshop} onAddMultiple={handleUploadWorkshops} onEdit={handleEditWorkshop} onDelete={handleDeleteWorkshop} searchPlaceholder="Search Workshops..." exportFileName="Workshops" />} />
+          <Route path="workshops" element={<DataTable columns={dynamicWorkshopsColumns} data={workshops} onAdd={handleAddWorkshop} onAddMultiple={handleUploadWorkshops} onEdit={handleEditWorkshop} onDelete={handleDeleteWorkshop} searchPlaceholder="Search Workshops..." exportFileName="Workshops" />} />
           <Route path="operators" element={<DataTable columns={dynamicOperatorsColumns} data={operators} onAdd={handleAddOperator} onAddMultiple={handleUploadOperators} onEdit={handleEditOperator} onDelete={handleDeleteOperator} searchPlaceholder="Search Operators..." exportFileName="Operators" />} />
           <Route path="machines" element={<DataTable columns={dynamicMachinesColumns} data={machines} onAdd={handleAddMachine} onAddMultiple={handleUploadMachines} onEdit={handleEditMachine} onDelete={handleDeleteMachine} searchPlaceholder="Search Machines..." exportFileName="Machines" />} />
           <Route path="molds" element={<DataTable columns={moldsColumns} data={molds} onAdd={handleAddMold} onAddMultiple={handleUploadMolds} onEdit={handleEditMold} onDelete={handleDeleteMold} searchPlaceholder="Search Molds..." exportFileName="Molds" />} />
