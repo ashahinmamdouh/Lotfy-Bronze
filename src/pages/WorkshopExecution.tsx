@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
-import { Factory, Play, Square, Save, Search, ChevronDown, RotateCcw } from 'lucide-react';
+import { Factory, Play, Square, Save, Search, ChevronDown, RotateCcw, Calendar, Cpu, Users, UserCheck, Clock, ClipboardList, AlertCircle, X, User } from 'lucide-react';
 import { useWorkOrders } from '../context/WorkOrderContext';
 import { useMasterData } from '../context/MasterDataContext';
 import { useFirebase } from '../context/FirebaseContext';
@@ -20,17 +20,19 @@ function WorkshopRecord() {
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     priority: '1',
-    workshop: '',
-    machine: '',
+    workshop: 'Quality Workshop A',
+    machine: 'Turning01',
     workorder: 'none',
     stage: '',
-    operator: '',
+    operator: 'Adel Tolba',
+    supervisor: 'Sarah Chen',
+    shift: 'Day Shift',
     status: 'Under Process',
     startTime: '',
     endTime: '',
     duration: '',
-    qtyProduced: '',
-    qtyScrap: '',
+    qtyProduced: '0',
+    qtyScrap: 'Low',
     remarks: ''
   });
 
@@ -60,10 +62,12 @@ function WorkshopRecord() {
   // Set initial values from master data
   useEffect(() => {
     if (machines.length > 0 && !formData.machine) {
-      setFormData(prev => ({ ...prev, machine: machines[0].name }));
+      const defaultMachine = machines.find(m => m.name === 'Turning01') || machines[0];
+      setFormData(prev => ({ ...prev, machine: defaultMachine.name }));
     }
     if (operators.length > 0 && !formData.operator) {
-      setFormData(prev => ({ ...prev, operator: operators[0].name }));
+      const defaultOperator = operators.find(o => o.name === 'Adel Tolba') || operators[0];
+      setFormData(prev => ({ ...prev, operator: defaultOperator.name }));
     }
   }, [machines, operators]);
 
@@ -257,8 +261,8 @@ function WorkshopRecord() {
         }
       }
 
-      // If status is "Completed", update the Work Order stages
-      if (formData.status === 'Completed' && selectedWO) {
+      // If status is "Complete", update the Work Order stages
+      if (formData.status === 'Complete' && selectedWO) {
         // Check if this is a Quality or Inspection stage
         const isQualityStage = formData.stage.toLowerCase().includes('quality') || 
                               formData.stage.toLowerCase().includes('inspection');
@@ -310,7 +314,7 @@ function WorkshopRecord() {
         endTime: '',
         duration: '',
         qtyProduced: '',
-        qtyScrap: '',
+        qtyScrap: '0',
         remarks: ''
       }));
       setTimerStart(null);
@@ -328,324 +332,405 @@ function WorkshopRecord() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <form onSubmit={handleSubmit} className="space-y-8">
-        <div className="bg-white p-8 border border-gray-200 shadow-sm">
-          <div className="flex justify-between items-start mb-8 border-b border-gray-100 pb-6">
-            <div className="flex items-center gap-4">
+    <div className="max-w-[1200px] mx-auto font-condensed">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+          LOG ACTIVITY: {formData.workshop || 'Select Workshop'}
+        </h1>
+      </div>
+
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-12 gap-6">
+        {/* Sidebar: Context & Configuration (Left) */}
+        <div className="md:col-span-4">
+          <div className="bg-white border border-gray-200 shadow-sm rounded-lg p-6 space-y-5">
+            <h2 className="text-sm font-bold text-gray-900 uppercase tracking-tight mb-4">
+              CONTEXT & CONFIGURATION
+            </h2>
+            
+            <div className="space-y-4">
               <div>
-                <h3 className="text-2xl font-serif italic text-gray-900">Workshop Execution</h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  Log production activities and track stage progress.
-                </p>
-              </div>
-              {selectedWO && selectedWO.stages.find(s => s.name === formData.stage)?.reworkCount > 0 && (
-                <div className="bg-red-100 border border-red-200 text-red-700 px-3 py-1 rounded-full flex items-center gap-2 animate-pulse">
-                  <RotateCcw className="h-4 w-4" />
-                  <span className="text-xs font-bold uppercase tracking-wider">Rework #{selectedWO.stages.find(s => s.name === formData.stage)?.reworkCount}</span>
+                <label className="block text-xs font-bold text-gray-900 mb-1">Date</label>
+                <div className="relative">
+                  <input 
+                    type="date" 
+                    name="date" 
+                    value={formData.date} 
+                    onChange={handleChange} 
+                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:border-blue-500 focus:ring-0 transition-all font-condensed" 
+                  />
+                  <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                 </div>
-              )}
-            </div>
-          </div>
-
-          <div className="mb-8 p-4 bg-indigo-50 border border-indigo-100 rounded-lg">
-            <label htmlFor="workshop" className="block text-xs font-bold text-indigo-600 uppercase tracking-wider mb-2">Active Workshop</label>
-            <div className="relative" ref={workshopDropdownRef}>
-              <div 
-                className="w-full border border-indigo-200 px-4 py-3 text-lg font-bold text-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white rounded-md shadow-sm cursor-pointer flex justify-between items-center"
-                onClick={() => setIsWorkshopDropdownOpen(!isWorkshopDropdownOpen)}
-              >
-                <span>
-                  {formData.workshop || 'Select Workshop...'}
-                </span>
-                <ChevronDown className={cn("h-5 w-5 text-indigo-400 transition-transform", isWorkshopDropdownOpen && "transform rotate-180")} />
               </div>
 
-              {isWorkshopDropdownOpen && (
-                <div className="absolute z-50 mt-1 w-full bg-white border border-indigo-200 shadow-xl rounded-md overflow-hidden">
-                  <div className="p-2 border-b border-indigo-50 bg-indigo-50/30">
-                    <div className="relative">
-                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-indigo-400" />
-                      <input
-                        type="text"
-                        className="w-full pl-8 pr-3 py-2 text-sm border border-indigo-100 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        placeholder="Search Workshop..."
-                        value={workshopSearch}
-                        onChange={(e) => setWorkshopSearch(e.target.value)}
-                        onClick={(e) => e.stopPropagation()}
-                        autoFocus
-                      />
+              <div>
+                <label className="block text-xs font-bold text-gray-900 mb-1">Workshop</label>
+                <div className="relative" ref={workshopDropdownRef}>
+                  <div 
+                    className="w-full bg-white border border-gray-300 px-3 py-2 rounded text-sm text-gray-900 cursor-pointer flex justify-between items-center hover:border-gray-400 transition-all font-condensed"
+                    onClick={() => setIsWorkshopDropdownOpen(!isWorkshopDropdownOpen)}
+                  >
+                    <span className="truncate">{formData.workshop || 'Select Workshop...'}</span>
+                    <ChevronDown className={cn("h-4 w-4 text-gray-400 transition-transform", isWorkshopDropdownOpen && "rotate-180")} />
+                  </div>
+
+                  {isWorkshopDropdownOpen && (
+                    <div className="absolute z-50 mt-1 w-full bg-white border border-gray-300 shadow-xl rounded overflow-hidden">
+                      <div className="p-2 border-b border-gray-100 bg-gray-50">
+                        <div className="relative">
+                          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                          <input
+                            type="text"
+                            className="w-full pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded focus:border-blue-500 focus:ring-0 font-condensed"
+                            placeholder="Search Workshop..."
+                            value={workshopSearch}
+                            onChange={(e) => setWorkshopSearch(e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            autoFocus
+                          />
+                        </div>
+                      </div>
+                      <div className="max-h-60 overflow-y-auto">
+                        {filteredWorkshops.map(w => (
+                          <div 
+                            key={w._id}
+                            className={cn(
+                              "px-3 py-2 text-sm cursor-pointer hover:bg-gray-100 transition-colors font-condensed",
+                              formData.workshop === w.name && "bg-blue-50 text-blue-700 font-bold"
+                            )}
+                            onClick={() => {
+                              handleChange({ target: { name: 'workshop', value: w.name } } as any);
+                              setIsWorkshopDropdownOpen(false);
+                            }}
+                          >
+                            {w.name}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-900 mb-1">Machine</label>
+                <div className="relative">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none">
+                    <Factory className="h-3.5 w-3.5 text-gray-500" />
+                  </div>
+                  <select 
+                    name="machine" 
+                    value={formData.machine} 
+                    onChange={handleChange} 
+                    className="w-full pl-9 pr-8 py-2 bg-white border border-gray-300 rounded text-sm appearance-none focus:border-blue-500 focus:ring-0 font-condensed"
+                  >
+                    {machines.map(m => <option key={m._id} value={m.name}>{m.name}</option>)}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-900 mb-1">Shift</label>
+                <div className="relative">
+                  <select 
+                    name="shift" 
+                    value={formData.shift} 
+                    onChange={handleChange} 
+                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm appearance-none focus:border-blue-500 focus:ring-0 font-condensed"
+                  >
+                    <option>Day Shift</option>
+                    <option>Night Shift</option>
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-900 mb-1">Operator</label>
+                <div className="relative">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none">
+                    <div className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                      <User className="h-3 w-3 text-gray-500" />
                     </div>
                   </div>
-                  <div className="max-h-60 overflow-y-auto">
-                    {filteredWorkshops.length > 0 ? (
-                      filteredWorkshops.map(w => (
-                        <div 
-                          key={w._id}
-                          className={cn(
-                            "px-4 py-3 text-base cursor-pointer hover:bg-indigo-50 border-b border-indigo-50 last:border-0",
-                            formData.workshop === w.name && "bg-indigo-50 font-bold"
-                          )}
-                          onClick={() => {
-                            handleChange({ target: { name: 'workshop', value: w.name } } as any);
-                            setIsWorkshopDropdownOpen(false);
-                            setWorkshopSearch('');
-                          }}
-                        >
-                          <div className="flex justify-between items-center">
-                            <span>{w.name}</span>
-                            {w.stageName && (
-                              <span className="text-xs font-normal text-indigo-400 italic">({w.stageName})</span>
-                            )}
+                  <select 
+                    name="operator" 
+                    value={formData.operator} 
+                    onChange={handleChange} 
+                    className="w-full pl-10 pr-8 py-2 bg-white border border-gray-300 rounded text-sm appearance-none focus:border-blue-500 focus:ring-0 font-condensed"
+                  >
+                    {operators.map(o => <option key={o._id} value={o.name}>{o.name}</option>)}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-900 mb-1">Supervisor</label>
+                <div className="relative">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none">
+                    <div className="w-5 h-5 rounded-full bg-pink-100 flex items-center justify-center overflow-hidden">
+                      <User className="h-3 w-3 text-pink-500" />
+                    </div>
+                  </div>
+                  <select 
+                    name="supervisor" 
+                    value={formData.supervisor} 
+                    onChange={handleChange} 
+                    className="w-full pl-10 pr-8 py-2 bg-white border border-gray-300 rounded text-sm appearance-none focus:border-blue-500 focus:ring-0 font-condensed"
+                  >
+                    <option value="">Select Supervisor...</option>
+                    <option>Sarah Chen</option>
+                    <option>Michael Scott</option>
+                    <option>Jim Halpert</option>
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content: Activity Details (Right) */}
+        <div className="md:col-span-8">
+          <div className="bg-white border border-gray-200 shadow-sm rounded-lg p-6 space-y-6">
+            <h2 className="text-sm font-bold text-gray-900 uppercase tracking-tight">
+              ACTIVITY DETAILS
+            </h2>
+
+            <div className="space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-900 mb-1">Priority</label>
+                  <select 
+                    name="priority" 
+                    value={formData.priority} 
+                    onChange={handleChange} 
+                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm appearance-none focus:border-blue-500 focus:ring-0 font-condensed"
+                  >
+                    <option value="1">1 - Normal</option>
+                    <option value="2">2 - High</option>
+                    <option value="3">3 - Urgent</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-900 mb-1">Work Order</label>
+                  <div className="relative" ref={dropdownRef}>
+                    <div 
+                      className={cn(
+                        "w-full border px-3 py-2 rounded text-sm font-bold cursor-pointer flex justify-between items-center transition-all font-condensed",
+                        formData.workorder === 'none' 
+                          ? "bg-[#fffcf0] border-[#d4a017] text-[#b8860b]" 
+                          : "bg-white border-gray-300 text-gray-900"
+                      )}
+                      onClick={() => setIsWoDropdownOpen(!isWoDropdownOpen)}
+                    >
+                      <span className="truncate">
+                        {formData.workorder === 'none' ? 'None (Maintenance/Setup)' : (selectedWO?.id || 'Select Work Order')}
+                      </span>
+                      <ChevronDown className={cn("h-4 w-4 opacity-50 transition-transform", isWoDropdownOpen && "rotate-180")} />
+                    </div>
+
+                    {isWoDropdownOpen && (
+                      <div className="absolute z-50 mt-1 w-full bg-white border border-gray-300 shadow-xl rounded overflow-hidden">
+                        <div className="p-2 border-b border-gray-100 bg-gray-50">
+                          <div className="relative">
+                            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                            <input
+                              type="text"
+                              className="w-full pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded focus:border-blue-500 focus:ring-0 font-condensed"
+                              placeholder="Search Work Order..."
+                              value={woSearch}
+                              onChange={(e) => setWoSearch(e.target.value)}
+                              onClick={(e) => e.stopPropagation()}
+                              autoFocus
+                            />
                           </div>
                         </div>
-                      ))
-                    ) : (
-                      <div className="px-4 py-4 text-sm text-gray-400 italic text-center">
-                        No workshops found
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Stage Progress Stepper */}
-          {selectedWO && selectedWO.stages && (
-            <div className="mb-10">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Process Flow: {selectedWO.process}</span>
-                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-                  {selectedWO.stages.filter(s => s.status === 'completed').length} / {selectedWO.stages.length} Stages
-                </span>
-              </div>
-              <div className="flex gap-2">
-                {selectedWO.stages.map((s, idx) => (
-                  <div 
-                    key={idx} 
-                    className={cn(
-                      "h-1.5 flex-1 transition-colors",
-                      s.status === 'completed' ? "bg-green-500" : 
-                      s.status === 'current' ? "bg-[#f27d26] animate-pulse" : "bg-gray-200"
-                    )}
-                    title={`${s.name} (${s.status})`}
-                  />
-                ))}
-              </div>
-              <div className="mt-2 flex justify-between text-[10px] text-gray-400 font-bold uppercase tracking-tighter">
-                <span>{selectedWO.stages[0].name}</span>
-                <span>{selectedWO.stages[selectedWO.stages.length - 1].name}</span>
-              </div>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 gap-y-6 gap-x-6 sm:grid-cols-6">
-            <div className="sm:col-span-3">
-              <label htmlFor="date" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Date</label>
-              <input type="date" name="date" id="date" value={formData.date} onChange={handleChange} className="w-full border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black" />
-            </div>
-
-            <div className="sm:col-span-3">
-              <label htmlFor="priority" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Priority</label>
-              <select id="priority" name="priority" value={formData.priority} onChange={handleChange} className="w-full border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black bg-white">
-                <option value="1">1 - Normal</option>
-                <option value="2">2 - High</option>
-                <option value="3">3 - Urgent</option>
-              </select>
-            </div>
-
-            <div className="sm:col-span-3">
-              <label htmlFor="machine" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Machine</label>
-              <select id="machine" name="machine" value={formData.machine} onChange={handleChange} className="w-full border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black bg-white">
-                {machines.map(m => (
-                  <option key={m._id} value={m.name}>{m.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="sm:col-span-3">
-              <label htmlFor="workorder" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Work Order</label>
-              <div className="relative" ref={dropdownRef}>
-                <div 
-                  className="w-full border border-gray-300 px-3 py-2 text-sm font-bold text-[#f27d26] bg-white cursor-pointer flex justify-between items-center"
-                  onClick={() => setIsWoDropdownOpen(!isWoDropdownOpen)}
-                >
-                  <span>
-                    {formData.workorder === 'none' 
-                      ? 'None (Maintenance/Setup)' 
-                      : (orders.find(o => o.id === formData.workorder)?.id || 'Select Work Order')}
-                  </span>
-                  <ChevronDown className={cn("h-4 w-4 text-gray-400 transition-transform", isWoDropdownOpen && "transform rotate-180")} />
-                </div>
-
-                {isWoDropdownOpen && (
-                  <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 shadow-lg rounded-md overflow-hidden">
-                    <div className="p-2 border-b border-gray-100 bg-gray-50">
-                      <div className="relative">
-                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-                        <input
-                          type="text"
-                          className="w-full pl-8 pr-3 py-2 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                          placeholder="Search Work Order..."
-                          value={woSearch}
-                          onChange={(e) => setWoSearch(e.target.value)}
-                          onClick={(e) => e.stopPropagation()}
-                          autoFocus
-                        />
-                      </div>
-                    </div>
-                    <div className="max-h-60 overflow-y-auto">
-                      {filteredWOOptions.length > 0 ? (
-                        <>
+                        <div className="max-h-60 overflow-y-auto">
                           {filteredWOOptions.map(wo => (
                             <div 
                               key={wo.id}
                               className={cn(
-                                "px-4 py-2 text-sm cursor-pointer hover:bg-indigo-50 border-b border-gray-50",
-                                formData.workorder === wo.id && "bg-indigo-50 font-bold"
+                                "px-3 py-2 text-sm cursor-pointer hover:bg-gray-100 transition-colors font-condensed",
+                                formData.workorder === wo.id && "bg-blue-50 text-blue-700 font-bold"
                               )}
                               onClick={() => {
                                 setFormData(prev => ({ ...prev, workorder: wo.id }));
                                 setIsWoDropdownOpen(false);
-                                setWoSearch('');
                               }}
                             >
                               <div className="flex justify-between items-center">
-                                <span className="text-[#f27d26] font-bold">{wo.id}</span>
-                                <div className="flex gap-1">
-                                  <span className="px-1.5 py-0.5 bg-indigo-100 text-indigo-700 text-[9px] font-bold rounded uppercase">
-                                    {wo.stages?.find((s: any) => s.status === 'current')?.name || 'No Stage'}
-                                  </span>
-                                  <span className="text-[10px] text-gray-400 uppercase">{wo.process}</span>
-                                </div>
+                                <span className="font-bold">{wo.id}</span>
+                                <span className="text-[10px] opacity-50 uppercase">{wo.process}</span>
                               </div>
-                              <div className="text-[10px] text-gray-500 truncate">{wo.material}</div>
                             </div>
                           ))}
                           <div 
-                            className={cn(
-                              "px-4 py-2 text-sm cursor-pointer hover:bg-indigo-50 border-t-2 border-gray-100 mt-1 italic text-gray-500",
-                              formData.workorder === 'none' && "bg-indigo-50 font-bold"
-                            )}
+                            className="px-3 py-2 text-sm italic text-gray-500 hover:bg-gray-100 cursor-pointer font-condensed"
                             onClick={() => {
                               setFormData(prev => ({ ...prev, workorder: 'none' }));
                               setIsWoDropdownOpen(false);
-                              setWoSearch('');
                             }}
                           >
                             None (Maintenance/Setup)
                           </div>
-                        </>
-                      ) : (
-                        <>
-                          <div 
-                            className={cn(
-                              "px-4 py-2 text-sm cursor-pointer hover:bg-indigo-50",
-                              formData.workorder === 'none' && "bg-indigo-50 font-bold"
-                            )}
-                            onClick={() => {
-                              setFormData(prev => ({ ...prev, workorder: 'none' }));
-                              setIsWoDropdownOpen(false);
-                              setWoSearch('');
-                            }}
-                          >
-                            None (Maintenance/Setup)
-                          </div>
-                          <div className="px-4 py-3 text-xs text-gray-400 italic text-center">
-                            No matching work orders in this workshop
-                          </div>
-                        </>
-                      )}
-                    </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
-            </div>
 
-            <div className="sm:col-span-3">
-              <label htmlFor="operator" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Operator</label>
-              <select id="operator" name="operator" value={formData.operator} onChange={handleChange} className="w-full border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black bg-white">
-                {operators.map(o => (
-                  <option key={o._id} value={o.name}>{o.name}</option>
-                ))}
-              </select>
-            </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-900 mb-1">Work Order Full Name</label>
+                <div className="w-full px-3 py-2 bg-[#e9ecef] border border-gray-300 rounded text-sm font-bold text-gray-700 font-condensed">
+                  {formData.workorder === 'none' ? 'None (Maintenance/Setup)' : (selectedWO ? `${selectedWO.id} - ${selectedWO.material}` : 'No Work Order Selected')}
+                </div>
+              </div>
 
-            <div className="sm:col-span-3">
-              <label htmlFor="status" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Task Status</label>
-              <select id="status" name="status" value={formData.status} onChange={handleChange} className="w-full border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black bg-white">
-                <option>Under Process</option>
-                <option>Completed</option>
-              </select>
-            </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-900 mb-1">Task Status</label>
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center pointer-events-none">
+                      <div className={cn(
+                        "w-2 h-2 rounded-full",
+                        formData.status === 'Complete' ? "bg-green-500" : "bg-blue-600"
+                      )} />
+                    </div>
+                    <select 
+                      name="status" 
+                      value={formData.status} 
+                      onChange={handleChange} 
+                      className="w-full pl-8 pr-8 py-2 bg-white border border-gray-300 rounded text-sm appearance-none focus:border-blue-500 focus:ring-0 font-condensed font-bold"
+                    >
+                      <option>Under Process</option>
+                      <option>Complete</option>
+                      <option>On Hold</option>
+                      <option>Rejected</option>
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                  </div>
+                </div>
 
-            <div className="sm:col-span-2">
-              <label htmlFor="startTime" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Start Time</label>
-              <input type="time" name="startTime" id="startTime" value={formData.startTime} onChange={handleChange} className="w-full border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black" />
-            </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-900 mb-1">Start Time</label>
+                  <div className="flex gap-2">
+                    <input 
+                      type="time" 
+                      name="startTime" 
+                      value={formData.startTime} 
+                      onChange={handleChange} 
+                      className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:border-blue-500 focus:ring-0 font-condensed" 
+                    />
+                    {!timerActive ? (
+                      <button 
+                        type="button" 
+                        onClick={handleStartTimer}
+                        className="px-3 bg-gray-800 text-white rounded hover:bg-black transition-colors"
+                      >
+                        <Play className="h-3.5 w-3.5" />
+                      </button>
+                    ) : (
+                      <button 
+                        type="button" 
+                        onClick={handleStopTimer}
+                        className="px-3 bg-red-600 text-white rounded hover:bg-red-700 animate-pulse transition-colors"
+                      >
+                        <Square className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
 
-            <div className="sm:col-span-2">
-              <label htmlFor="endTime" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">End Time</label>
-              <input type="time" name="endTime" id="endTime" value={formData.endTime} onChange={handleChange} className="w-full border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black" />
-            </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-900 mb-1">Qty Produced</label>
+                  <input 
+                    type="number" 
+                    name="qtyProduced" 
+                    value={formData.qtyProduced} 
+                    onChange={handleChange} 
+                    placeholder="0"
+                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:border-blue-500 focus:ring-0 font-condensed" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-900 mb-1">Qty Scrap</label>
+                  <div className="relative">
+                    <select 
+                      name="qtyScrap" 
+                      value={formData.qtyScrap} 
+                      onChange={handleChange} 
+                      className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm appearance-none focus:border-blue-500 focus:ring-0 font-condensed"
+                    >
+                      <option value="0">0</option>
+                      <option value="Low">Low</option>
+                      <option value="Medium">Medium</option>
+                      <option value="High">High</option>
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-900 mb-1 whitespace-nowrap">Duration (HRs)</label>
+                  <div className="relative">
+                    <input 
+                      type="text" 
+                      name="duration" 
+                      value={formData.duration} 
+                      readOnly
+                      placeholder="-- : --"
+                      className="w-full px-3 py-2 bg-[#e9ecef] border border-gray-300 rounded text-sm text-gray-500 focus:ring-0 font-condensed" 
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400 font-condensed">HRS</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-900 mb-1">End Time</label>
+                  <div className="relative">
+                    <input 
+                      type="time" 
+                      name="endTime" 
+                      value={formData.endTime} 
+                      onChange={handleChange} 
+                      className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:border-blue-500 focus:ring-0 font-condensed" 
+                    />
+                    <Clock className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                  </div>
+                </div>
+              </div>
 
-            <div className="sm:col-span-2">
-              <label htmlFor="duration" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Duration (Hrs)</label>
-              <input type="number" step="0.01" name="duration" id="duration" value={formData.duration} onChange={handleChange} className="w-full border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black" />
-            </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-900 mb-1 uppercase">OPERATOR NOTES</label>
+                <textarea 
+                  name="remarks" 
+                  rows={2} 
+                  value={formData.remarks} 
+                  onChange={handleChange} 
+                  placeholder="Add detailed observations here..."
+                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:border-blue-500 focus:ring-0 transition-all font-condensed"
+                />
+              </div>
 
-            <div className="sm:col-span-3">
-              <label htmlFor="qtyProduced" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Qty Produced</label>
-              <input type="number" name="qtyProduced" id="qtyProduced" value={formData.qtyProduced} onChange={handleChange} className="w-full border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black" />
-            </div>
-
-            <div className="sm:col-span-3">
-              <label htmlFor="qtyScrap" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Qty Scrap</label>
-              <input type="number" name="qtyScrap" id="qtyScrap" value={formData.qtyScrap} onChange={handleChange} className="w-full border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black" />
-            </div>
-
-            <div className="sm:col-span-6">
-              <label htmlFor="remarks" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Remarks / Notes</label>
-              <textarea id="remarks" name="remarks" rows={3} value={formData.remarks} onChange={handleChange} className="w-full border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black"></textarea>
-            </div>
-          </div>
-
-          <div className="mt-10 pt-8 border-t border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div className="flex gap-3 w-full sm:w-auto">
-              {!timerActive ? (
+              <div className="pt-4 flex justify-end gap-3">
+                <button 
+                  type="submit" 
+                  className="px-6 py-2 bg-[#2b5ba9] text-white rounded text-sm font-bold hover:bg-[#244d8f] transition-all shadow-sm flex items-center gap-2 font-condensed uppercase"
+                >
+                  Record Activity
+                </button>
                 <button 
                   type="button" 
-                  onClick={handleStartTimer}
-                  className="flex-1 sm:flex-none inline-flex justify-center items-center px-6 py-3 border border-transparent text-xs font-bold tracking-widest uppercase text-white bg-black hover:bg-gray-800 transition-colors"
+                  onClick={() => setFormData({...formData, startTime: '', endTime: '', duration: '', qtyProduced: '', qtyScrap: '0', remarks: ''})}
+                  className="px-6 py-2 bg-[#e9ecef] border border-gray-300 rounded text-sm font-bold text-gray-700 hover:bg-gray-300 transition-all font-condensed uppercase"
                 >
-                  <Play className="h-4 w-4 mr-2" /> Start Timer
+                  Cancel
                 </button>
-              ) : (
-                <button 
-                  type="button" 
-                  onClick={handleStopTimer}
-                  className="flex-1 sm:flex-none inline-flex justify-center items-center px-6 py-3 border border-transparent text-xs font-bold tracking-widest uppercase text-white bg-red-600 hover:bg-red-700 animate-pulse transition-colors"
-                >
-                  <Square className="h-4 w-4 mr-2" /> Stop Timer
-                </button>
-              )}
-            </div>
-            
-            <div className="flex gap-3 w-full sm:w-auto">
-              <button 
-                type="button" 
-                onClick={() => setFormData({...formData, startTime: '', endTime: '', duration: '', qtyProduced: '', qtyScrap: '', remarks: ''})} 
-                className="flex-1 sm:flex-none px-6 py-3 border border-gray-300 text-xs font-bold tracking-widest uppercase text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                Reset
-              </button>
-              <button 
-                type="submit" 
-                className="flex-1 sm:flex-none inline-flex justify-center items-center px-6 py-3 border border-transparent text-xs font-bold tracking-widest uppercase text-white bg-[#f27d26] hover:bg-[#e06b15] transition-colors"
-              >
-                <Save className="h-4 w-4 mr-2" /> Save Record
-              </button>
+              </div>
             </div>
           </div>
         </div>
@@ -674,47 +759,110 @@ function WorkshopHistory() {
   }, [user, isAuthReady]);
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white shadow overflow-hidden sm:rounded-md">
-        <ul className="divide-y divide-gray-200">
-          {records.map((record) => (
-            <li key={record.id}>
-              <div className="px-4 py-4 sm:px-6">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium text-indigo-600 truncate">
-                    {record.workorder !== 'none' ? `WO: ${record.workorder}` : 'Maintenance/Setup'}
-                  </p>
-                  <div className="ml-2 flex-shrink-0 flex">
-                    <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                      {record.status}
-                    </p>
-                  </div>
+    <div className="space-y-4 font-condensed">
+      <div className="flex justify-between items-center mb-2">
+        <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Recent Activity Logs</h2>
+        <div className="flex gap-2">
+          <div className="flex items-center gap-1 text-[10px] font-bold text-green-600 uppercase">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+            Complete
+          </div>
+          <div className="flex items-center gap-1 text-[10px] font-bold text-blue-600 uppercase">
+            <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+            In Progress
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4">
+        {records.map((record) => (
+          <div key={record.id} className="bg-white border border-gray-200 shadow-sm rounded-lg overflow-hidden flex flex-col md:flex-row">
+            {/* Status Bar */}
+            <div className={cn(
+              "w-full md:w-1.5",
+              record.status === 'Complete' || record.status === 'Completed' ? "bg-green-500" : "bg-blue-600"
+            )} />
+            
+            <div className="flex-1 p-4 flex flex-col md:flex-row md:items-center gap-6">
+              {/* Context Info */}
+              <div className="min-w-[200px]">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Workshop</span>
+                  <span className="text-xs font-bold text-gray-900 uppercase">{record.workshop}</span>
                 </div>
-                <div className="mt-2 sm:flex sm:justify-between">
-                  <div className="sm:flex">
-                    <p className="flex items-center text-sm text-gray-500">
-                      <Factory className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
-                      {record.workshop} - {record.machine}
-                    </p>
-                    <p className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0 sm:ml-6">
-                      Operator: {record.operator}
-                    </p>
-                  </div>
-                  <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
-                    <p>
-                      Produced: {record.qtyProduced || 0} | Scrap: {record.qtyScrap || 0}
-                    </p>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <Factory className="h-3 w-3 text-gray-400" />
+                  <span className="text-xs font-bold text-gray-700">{record.machine}</span>
+                  <span className="text-[10px] text-gray-400">|</span>
+                  <span className="text-[10px] font-bold text-gray-500 uppercase">{record.shift}</span>
                 </div>
               </div>
-            </li>
-          ))}
-          {records.length === 0 && (
-            <li className="px-4 py-8 text-center text-sm text-gray-500">
-              No workshop records found.
-            </li>
-          )}
-        </ul>
+
+              {/* Work Order Info */}
+              <div className="flex-1 border-l border-gray-100 pl-6">
+                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tight mb-1">Activity / Work Order</div>
+                <div className="flex items-center gap-2">
+                  <span className={cn(
+                    "px-1.5 py-0.5 rounded text-[9px] font-bold uppercase",
+                    record.workorder !== 'none' ? "bg-blue-50 text-blue-700 border border-blue-100" : "bg-[#fffcf0] text-[#b8860b] border border-[#d4a017]"
+                  )}>
+                    {record.workorder !== 'none' ? record.workorder : 'Maint/Setup'}
+                  </span>
+                  <span className="text-xs font-bold text-gray-900 truncate max-w-[200px]">
+                    {record.status}
+                  </span>
+                </div>
+              </div>
+
+              {/* Metrics */}
+              <div className="flex items-center gap-8 border-l border-gray-100 pl-6">
+                <div className="text-center">
+                  <div className="text-[9px] font-bold text-gray-400 uppercase mb-0.5">Produced</div>
+                  <div className="text-sm font-black text-gray-900">{record.qtyProduced || 0}</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-[9px] font-bold text-gray-400 uppercase mb-0.5">Scrap</div>
+                  <div className="text-sm font-black text-red-600">{record.qtyScrap || 0}</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-[9px] font-bold text-gray-400 uppercase mb-0.5">Duration</div>
+                  <div className="text-sm font-black text-gray-900">{record.duration || '0.0'} <span className="text-[10px] font-normal text-gray-400">HRS</span></div>
+                </div>
+              </div>
+
+              {/* Personnel */}
+              <div className="border-l border-gray-100 pl-6 hidden xl:block">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-4 h-4 rounded-full bg-gray-100 flex items-center justify-center">
+                    <User className="h-2.5 w-2.5 text-gray-500" />
+                  </div>
+                  <span className="text-xs font-bold text-gray-700">{record.operator}</span>
+                </div>
+                {record.supervisor && (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded-full bg-pink-50 flex items-center justify-center">
+                      <User className="h-2.5 w-2.5 text-pink-500" />
+                    </div>
+                    <span className="text-[10px] font-bold text-gray-500">{record.supervisor}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Time */}
+              <div className="ml-auto text-right">
+                <div className="text-[10px] font-bold text-gray-400 uppercase mb-0.5">{record.date}</div>
+                <div className="text-xs font-bold text-gray-600">{record.startTime} - {record.endTime}</div>
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {records.length === 0 && (
+          <div className="bg-white border border-gray-200 border-dashed rounded-lg p-12 text-center">
+            <ClipboardList className="h-10 w-10 text-gray-200 mx-auto mb-3" />
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">No activity records found for this period</p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -722,25 +870,27 @@ function WorkshopHistory() {
 
 export default function WorkshopExecution() {
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Workshop Execution</h1>
-        <p className="mt-1 text-sm text-gray-500">Record daily production activities and machine usage.</p>
+    <div className="space-y-6 bg-[#f8f9fa] min-h-screen p-6 font-condensed">
+      <div className="flex justify-between items-end">
+        <div>
+          <h1 className="text-3xl font-black uppercase tracking-tighter text-gray-900">Workshop Execution</h1>
+          <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Production Control & Activity Logging</p>
+        </div>
       </div>
 
-      <div className="bg-white shadow rounded-lg">
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8 px-6 overflow-x-auto" aria-label="Tabs">
+      <div className="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden">
+        <div className="border-b border-gray-200 bg-white">
+          <nav className="flex px-6" aria-label="Tabs">
             {tabs.map((tab) => (
               <NavLink
                 key={tab.name}
                 to={`/workshop/${tab.path}`}
                 className={({ isActive }) =>
                   cn(
+                    "whitespace-nowrap py-4 px-6 border-b-2 font-bold text-xs uppercase tracking-widest transition-all",
                     isActive
-                      ? 'border-indigo-500 text-indigo-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-                    'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm'
+                      ? 'border-[#2b5ba9] text-[#2b5ba9]'
+                      : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-200'
                   )
                 }
               >
@@ -750,7 +900,7 @@ export default function WorkshopExecution() {
           </nav>
         </div>
 
-        <div className="p-6">
+        <div className="p-8 bg-[#f8f9fa]">
           <Routes>
             <Route path="/" element={<Navigate to="record" replace />} />
             <Route path="record" element={<WorkshopRecord />} />
