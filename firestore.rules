@@ -27,8 +27,18 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
+    function isAdmin() {
+      return isAuthenticated() &&
+        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+          (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role.lower() == 'admin')) ||
+          (request.auth.token.email == "a.shahin.mamdouh@gmail.com" && request.auth.token.email_verified == true));
+    }
+    
+    function isManager() {
+      return isAuthenticated() &&
+        (isAdmin() || 
+         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+          (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role.lower() == 'manager')));
     }
     
     function isDocOwner() {
@@ -44,56 +54,14 @@ service cloud.firestore {
       return !('authorId' in request.resource.data) ||
         request.resource.data.authorId == resource.data.authorId;
     }
-    
-    function hasRequiredFields(fields) {
-      return request.resource.data.keys().hasAll(fields);
-    }
-    
+
     function isValidWorkOrder(data) {
-      return data.id is string && data.id.size() > 0 && data.id.size() < 100 &&
-             data.material is string && data.material.size() > 0 && data.material.size() < 100 &&
+      return data.id is string && data.id.size() > 0 &&
+             data.material is string && data.material.size() > 0 &&
              data.qty is number && data.qty > 0 &&
              data.weight is number && data.weight >= 0 &&
              data.authorId is string && data.authorId.size() > 0 &&
-             (!('fullName' in data) || (data.fullName is string && data.fullName.size() < 500)) &&
-             (!('moldNo' in data) || (data.moldNo is string && data.moldNo.size() < 100));
-    }
-
-    match /test/connection {
-      allow read: if true;
-      allow write: if false;
-    }
-
-    match /master_materials/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
-    match /master_products/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
-    match /master_processes/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
-    match /master_status/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
-    match /master_workshops/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
-    match /master_operators/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
-    match /master_machines/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
-    match /master_molds/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
-    match /master_routing/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
-    match /master_rejections/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
-    match /workshop_records/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
-    match /quality_inspections/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
-    match /inventory_records/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
-    match /inventory_raw/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
-    match /inventory_fg/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
-    match /inventory_wip_product/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
-    match /inventory_wip_raw/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
-    match /inventory_issue/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
-    function isAdmin() {
-      return isAuthenticated() &&
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin' ||
-          (request.auth.token.email == "a.shahin.mamdouh@gmail.com" && request.auth.token.email_verified == true));
-    }
-
-    function isManager() {
-      return isAuthenticated() &&
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'manager' ||
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Manager' ||
-         isAdmin());
+             (!('status' in data) || (data.status is string && data.status.size() > 0));
     }
 
     function isValidOvertimeRequest(data) {
@@ -108,19 +76,14 @@ service cloud.firestore {
              data.authorId is string;
     }
 
-    match /overtime_requests/{docId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && uidUnchanged() && isValidOvertimeRequest(request.resource.data);
-      allow update: if isAuthenticated() && uidNotModified() && (
-        // Owner can update if still Pending
-        (isDocOwner() && resource.data.status == 'Pending' && isValidOvertimeRequest(request.resource.data)) ||
-        // Admin/Manager can update status
-        (isManager() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'processedBy', 'processedAt']))
-      );
-      allow delete: if isDocOwner() && resource.data.status == 'Pending';
-    }
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
 
-    match /settings/{docId} { allow read: if true; allow write: if isAuthenticated(); }
+    match /test/connection {
+      allow read: if true;
+      allow write: if false;
+    }
 
     match /users/{docId} {
       allow read: if isAuthenticated() && (isAdmin() || resource.data.email == request.auth.token.email);
@@ -129,19 +92,44 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    match /workOrders/{orderId} {
+    match /workOrders/{docId} {
       allow read: if isAuthenticated();
-      
-      allow create: if isAuthenticated() && 
-                    hasRequiredFields(['id', 'material', 'qty', 'weight', 'authorId']) &&
-                    isValidWorkOrder(request.resource.data) &&
-                    uidUnchanged();
-                    
-      allow update: if isAuthenticated() && 
-                    isValidWorkOrder(request.resource.data) &&
-                    uidNotModified();
-                    
-      allow delete: if isDocOwner();
+      allow update: if isAuthenticated() && (isAdmin() || (isValidWorkOrder(request.resource.data) && uidNotModified()));
+      allow create: if isAuthenticated() && (isAdmin() || (isValidWorkOrder(request.resource.data) && uidUnchanged()));
+      allow delete: if isAdmin() || isDocOwner();
     }
+
+    match /workshop_records/{docId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && (isAdmin() || uidUnchanged());
+      allow update: if isAuthenticated() && (isAdmin() || uidNotModified());
+      allow delete: if isAdmin() || isDocOwner();
+    }
+
+    match /overtime_requests/{docId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && (isAdmin() || (uidUnchanged() && isValidOvertimeRequest(request.resource.data)));
+      allow update: if isAdmin() || isManager() || (isDocOwner() && resource.data.status == 'Pending' && uidNotModified() && isValidOvertimeRequest(request.resource.data));
+      allow delete: if isAdmin() || (isDocOwner() && resource.data.status == 'Pending');
+    }
+
+    match /master_materials/{docId} { allow read: if isAuthenticated(); allow write: if isAdmin() || isManager(); }
+    match /master_products/{docId} { allow read: if isAuthenticated(); allow write: if isAdmin() || isManager(); }
+    match /master_processes/{docId} { allow read: if isAuthenticated(); allow write: if isAdmin() || isManager(); }
+    match /master_status/{docId} { allow read: if isAuthenticated(); allow write: if isAdmin() || isManager(); }
+    match /master_workshops/{docId} { allow read: if isAuthenticated(); allow create: if isAuthenticated() && uidUnchanged(); allow update: if isAuthenticated() && uidNotModified(); allow delete: if isDocOwner(); }
+    match /master_operators/{docId} { allow read: if isAuthenticated(); allow write: if isAdmin() || isManager(); }
+    match /master_machines/{docId} { allow read: if isAuthenticated(); allow write: if isAdmin() || isManager(); }
+    match /master_molds/{docId} { allow read: if isAuthenticated(); allow write: if isAdmin() || isManager(); }
+    match /master_routing/{docId} { allow read: if isAuthenticated(); allow write: if isAdmin() || isManager(); }
+    match /master_rejections/{docId} { allow read: if isAuthenticated(); allow write: if isAdmin() || isManager(); }
+    match /quality_inspections/{docId} { allow read: if isAuthenticated(); allow write: if isAdmin() || isManager(); }
+    match /inventory_records/{docId} { allow read: if isAuthenticated(); allow write: if isAdmin() || isManager(); }
+    match /inventory_raw/{docId} { allow read: if isAuthenticated(); allow write: if isAdmin() || isManager(); }
+    match /inventory_fg/{docId} { allow read: if isAuthenticated(); allow write: if isAdmin() || isManager(); }
+    match /inventory_wip_product/{docId} { allow read: if isAuthenticated(); allow write: if isAdmin() || isManager(); }
+    match /inventory_wip_raw/{docId} { allow read: if isAuthenticated(); allow write: if isAdmin() || isManager(); }
+    match /inventory_issue/{docId} { allow read: if isAuthenticated(); allow write: if isAdmin() || isManager(); }
+    match /settings/{docId} { allow read: if true; allow write: if isAdmin(); }
   }
 }

@@ -225,20 +225,30 @@ function WorkshopRecord() {
 
     try {
       // Save the workshop record
-      await addDoc(collection(db, 'workshop_records'), {
-        ...formData,
-        authorId: user.uid,
-        createdAt: new Date().toISOString()
-      });
+      try {
+        await addDoc(collection(db, 'workshop_records'), {
+          ...formData,
+          authorId: user.uid,
+          createdAt: new Date().toISOString()
+        });
+      } catch (err) {
+        console.error('Error adding workshop record:', err);
+        throw new Error(`Failed to save workshop record: ${err instanceof Error ? err.message : String(err)}`);
+      }
 
       // Update Work Order status based on task status
       if (selectedWO) {
-        if (formData.status === 'On Hold') {
-          await updateOrder(selectedWO.id, { status: 'On Hold' });
-        } else if (formData.status === 'Rejected') {
-          await updateOrder(selectedWO.id, { status: 'Rejected' });
-        } else if (formData.status === 'Under Process') {
-          await updateOrder(selectedWO.id, { status: 'In Production' });
+        try {
+          if (formData.status === 'On Hold') {
+            await updateOrder(selectedWO.id, { status: 'On Hold' });
+          } else if (formData.status === 'Rejected') {
+            await updateOrder(selectedWO.id, { status: 'Rejected' });
+          } else if (formData.status === 'Under Process') {
+            await updateOrder(selectedWO.id, { status: 'In Production' });
+          }
+        } catch (err) {
+          console.error('Error updating Work Order status:', err);
+          throw new Error(`Failed to update Work Order status: ${err instanceof Error ? err.message : String(err)}`);
         }
       }
 
@@ -259,19 +269,29 @@ function WorkshopRecord() {
             currentStages[currentIndex].status = 'completed';
             if (currentIndex + 1 < currentStages.length) {
               currentStages[currentIndex + 1].status = 'current';
-              await updateOrder(selectedWO.id, {
-                stages: currentStages,
-                stage: currentStages[currentIndex + 1].name,
-                workshop: currentStages[currentIndex + 1].workshop,
-                status: 'In Production'
-              });
+              try {
+                await updateOrder(selectedWO.id, {
+                  stages: currentStages,
+                  stage: currentStages[currentIndex + 1].name,
+                  workshop: currentStages[currentIndex + 1].workshop,
+                  status: 'In Production'
+                });
+              } catch (err) {
+                console.error('Error updating Work Order stages:', err);
+                throw new Error(`Failed to update Work Order stages: ${err instanceof Error ? err.message : String(err)}`);
+              }
             } else {
               // All stages completed
-              await updateOrder(selectedWO.id, {
-                stages: currentStages,
-                status: 'Completed',
-                completionDate: new Date().toISOString().split('T')[0]
-              });
+              try {
+                await updateOrder(selectedWO.id, {
+                  stages: currentStages,
+                  status: 'Completed',
+                  completionDate: new Date().toISOString().split('T')[0]
+                });
+              } catch (err) {
+                console.error('Error completing Work Order:', err);
+                throw new Error(`Failed to complete Work Order: ${err instanceof Error ? err.message : String(err)}`);
+              }
             }
           }
         }
@@ -289,9 +309,16 @@ function WorkshopRecord() {
         remarks: ''
       }));
       setTimerStart(null);
-    } catch (error) {
-      console.error('Error saving record:', error);
-      alert('Failed to save record.');
+    } catch (err: any) {
+      console.error('Error saving record:', err);
+      let errorMessage = 'Failed to save record.';
+      try {
+        const parsedError = JSON.parse(err.message);
+        errorMessage = `Error: ${parsedError.error || err.message}`;
+      } catch (e) {
+        errorMessage = err.message || errorMessage;
+      }
+      alert(errorMessage);
     }
   };
 
