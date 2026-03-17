@@ -128,6 +128,37 @@ function WorkshopRecord() {
           newData.operator = '';
         }
       }
+
+      if (name === 'startTime' || name === 'endTime') {
+        const newStartTime = name === 'startTime' ? value : prev.startTime;
+        const newEndTime = name === 'endTime' ? value : prev.endTime;
+        
+        if (newStartTime && newEndTime) {
+          const [startH, startM] = newStartTime.split(':').map(Number);
+          const [endH, endM] = newEndTime.split(':').map(Number);
+          
+          let diffMs = (endH * 60 + endM) * 60 * 1000 - (startH * 60 + startM) * 60 * 1000;
+          if (diffMs < 0) {
+            // Handle cross-midnight
+            diffMs += 24 * 60 * 60 * 1000;
+          }
+          const diffHrs = (diffMs / (1000 * 60 * 60)).toFixed(2);
+          newData.duration = diffHrs;
+        }
+      }
+
+      if (name === 'duration') {
+        if (prev.startTime && value) {
+          const durationHrs = parseFloat(value);
+          if (!isNaN(durationHrs)) {
+            const [startH, startM] = prev.startTime.split(':').map(Number);
+            const totalMs = (startH * 60 + startM) * 60 * 1000 + durationHrs * 60 * 60 * 1000;
+            const endH = Math.floor(totalMs / (60 * 60 * 1000)) % 24;
+            const endM = Math.floor((totalMs % (60 * 60 * 1000)) / (60 * 1000));
+            newData.endTime = `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
+          }
+        }
+      }
       
       return newData;
     });
@@ -634,31 +665,26 @@ function WorkshopRecord() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-900 mb-1">Qty Scrap</label>
-                  <div className="relative">
-                    <select 
-                      name="qtyScrap" 
-                      value={formData.qtyScrap} 
-                      onChange={handleChange} 
-                      className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm appearance-none focus:border-blue-500 focus:ring-0 font-condensed"
-                    >
-                      <option value="0">0</option>
-                      <option value="Low">Low</option>
-                      <option value="Medium">Medium</option>
-                      <option value="High">High</option>
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-                  </div>
+                  <input 
+                    type="number" 
+                    name="qtyScrap" 
+                    value={formData.qtyScrap} 
+                    onChange={handleChange} 
+                    placeholder="0"
+                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:border-blue-500 focus:ring-0 font-condensed" 
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-900 mb-1 whitespace-nowrap">Duration (HRs)</label>
                   <div className="relative">
                     <input 
-                      type="text" 
+                      type="number" 
+                      step="0.01"
                       name="duration" 
                       value={formData.duration} 
-                      readOnly
-                      placeholder="-- : --"
-                      className="w-full px-3 py-2 bg-[#e9ecef] border border-gray-300 rounded text-sm text-gray-500 focus:ring-0 font-condensed" 
+                      onChange={handleChange}
+                      placeholder="0.00"
+                      className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:border-blue-500 focus:ring-0 font-condensed" 
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400 font-condensed">HRS</span>
                   </div>
