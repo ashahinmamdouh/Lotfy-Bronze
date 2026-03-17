@@ -20,7 +20,7 @@ function WorkshopRecord() {
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     priority: '1',
-    workshop: localStorage.getItem('activeWorkshop') || '',
+    workshop: '',
     machine: '',
     workorder: 'none',
     stage: '',
@@ -97,7 +97,6 @@ function WorkshopRecord() {
       
       // If workshop changes, check if current workorder is still valid
       if (name === 'workshop') {
-        localStorage.setItem('activeWorkshop', value);
         if (prev.workorder !== 'none') {
           const order = orders.find(o => o.id === prev.workorder);
           const currentStage = order?.stages?.find((s: any) => s.status === 'current');
@@ -307,12 +306,6 @@ function WorkshopRecord() {
                 Log production activities and track stage progress.
               </p>
             </div>
-            {selectedWO && (
-              <div className="text-right">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Current Work Order</span>
-                <span className="text-lg font-mono font-bold text-[#f27d26]">{selectedWO.id}</span>
-              </div>
-            )}
           </div>
 
           <div className="mb-8 p-4 bg-indigo-50 border border-indigo-100 rounded-lg">
