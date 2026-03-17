@@ -6,24 +6,53 @@ import { useWorkOrders } from '../context/WorkOrderContext';
 import { useMasterData } from '../context/MasterDataContext';
 import * as XLSX from 'xlsx';
 
-const productionData = [
-  { name: 'Mon', produced: 4000, scrap: 240, planned: 4500 },
-  { name: 'Tue', produced: 3000, scrap: 139, planned: 3500 },
-  { name: 'Wed', produced: 2000, scrap: 980, planned: 2500 },
-  { name: 'Thu', produced: 2780, scrap: 390, planned: 3000 },
-  { name: 'Fri', produced: 1890, scrap: 480, planned: 2000 },
-  { name: 'Sat', produced: 2390, scrap: 380, planned: 2500 },
-  { name: 'Sun', produced: 3490, scrap: 430, planned: 4000 },
-];
-
-const deliveryData = [
-  { name: 'Week 1', time: 4 },
-  { name: 'Week 2', time: 3 },
-  { name: 'Week 3', time: 5 },
-  { name: 'Week 4', time: 2 },
-];
-
 function OverviewDashboard() {
+  const { orders } = useWorkOrders();
+  
+  const openOrders = orders.filter(o => o.status !== 'Completed' && o.status !== 'Canceled').length;
+  const completedToday = orders.filter(o => {
+    if (o.status !== 'Completed' || !o.completionDate) return false;
+    const today = new Date().toISOString().split('T')[0];
+    return o.completionDate.startsWith(today);
+  }).length;
+  
+  const delayedOrders = orders.filter(o => {
+    if (o.status === 'Completed' || o.status === 'Canceled') return false;
+    const due = new Date(o.due);
+    return due < new Date();
+  }).length;
+
+  const totalMaterial = orders.reduce((acc, o) => acc + (Number(o.weight) || 0), 0);
+
+  // Production Trend (last 7 days)
+  const last7Days = [...Array(7)].map((_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    return d.toISOString().split('T')[0];
+  });
+
+  const productionTrend = last7Days.map(date => {
+    const dayOrders = orders.filter(o => o.completionDate?.startsWith(date));
+    const produced = dayOrders.reduce((acc, o) => acc + (Number(o.weight) || 0), 0);
+    const plannedOrders = orders.filter(o => o.woDate?.startsWith(date) || o.start?.startsWith(date));
+    const planned = plannedOrders.reduce((acc, o) => acc + (Number(o.weight) || 0), 0);
+    
+    return {
+      name: new Date(date).toLocaleDateString('en-US', { weekday: 'short' }),
+      produced,
+      planned,
+      scrap: 0 // We don't have scrap data in the current model
+    };
+  });
+
+  // Delivery Time (last 4 weeks)
+  const deliveryTrend = [
+    { name: 'Week 1', time: 0 },
+    { name: 'Week 2', time: 0 },
+    { name: 'Week 3', time: 0 },
+    { name: 'Week 4', time: 0 },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -37,7 +66,7 @@ function OverviewDashboard() {
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 truncate">Open Work Orders</dt>
                   <dd className="flex items-baseline">
-                    <div className="text-2xl font-semibold text-gray-900">124</div>
+                    <div className="text-2xl font-semibold text-gray-900">{openOrders}</div>
                   </dd>
                 </dl>
               </div>
@@ -55,7 +84,7 @@ function OverviewDashboard() {
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 truncate">Completed Orders (Today)</dt>
                   <dd className="flex items-baseline">
-                    <div className="text-2xl font-semibold text-gray-900">18</div>
+                    <div className="text-2xl font-semibold text-gray-900">{completedToday}</div>
                   </dd>
                 </dl>
               </div>
@@ -73,7 +102,7 @@ function OverviewDashboard() {
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 truncate">Delayed Orders</dt>
                   <dd className="flex items-baseline">
-                    <div className="text-2xl font-semibold text-gray-900">7</div>
+                    <div className="text-2xl font-semibold text-gray-900">{delayedOrders}</div>
                   </dd>
                 </dl>
               </div>
@@ -91,7 +120,7 @@ function OverviewDashboard() {
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 truncate">Material Required (kg)</dt>
                   <dd className="flex items-baseline">
-                    <div className="text-2xl font-semibold text-gray-900">4,500</div>
+                    <div className="text-2xl font-semibold text-gray-900">{totalMaterial.toLocaleString()}</div>
                   </dd>
                 </dl>
               </div>
@@ -102,17 +131,17 @@ function OverviewDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">Daily Production vs Scrap (kg)</h3>
+          <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">Daily Production Trend (kg)</h3>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={productionData}>
+              <BarChart data={productionTrend}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis />
                 <Tooltip />
                 <Legend />
                 <Bar dataKey="produced" fill="#4f46e5" name="Produced" />
-                <Bar dataKey="scrap" fill="#ef4444" name="Scrap" />
+                <Bar dataKey="planned" fill="#94a3b8" name="Planned" />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -122,7 +151,7 @@ function OverviewDashboard() {
           <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">Average Delivery Time (Days)</h3>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={deliveryData}>
+              <LineChart data={deliveryTrend}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis />
@@ -176,6 +205,26 @@ function DailyDashboard() {
   });
 
   const totalOrders = orders.length || 1;
+
+  // Production Trend (last 7 days)
+  const last7Days = [...Array(7)].map((_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    return d.toISOString().split('T')[0];
+  });
+
+  const productionTrend = last7Days.map(date => {
+    const dayOrders = orders.filter(o => o.completionDate?.startsWith(date));
+    const produced = dayOrders.reduce((acc, o) => acc + (Number(o.weight) || 0), 0);
+    const plannedOrders = orders.filter(o => o.woDate?.startsWith(date) || o.start?.startsWith(date));
+    const planned = plannedOrders.reduce((acc, o) => acc + (Number(o.weight) || 0), 0);
+    
+    return {
+      name: new Date(date).toLocaleDateString('en-US', { weekday: 'short' }),
+      produced,
+      planned
+    };
+  });
 
   return (
     <div className="bg-[#0f172a] min-h-screen p-6 text-gray-100 rounded-lg">
@@ -243,10 +292,10 @@ function DailyDashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         {[
           { label: 'Active Work Orders', value: statusCounts['In Production'] + statusCounts['Not Started'], sub: 'Currently in progress', icon: ClipboardList, color: 'text-blue-400' },
-          { label: 'Output vs Plan', value: '87.4%', sub: 'Completed vs planned qty', icon: Play, color: 'text-green-400' },
-          { label: 'Rejection Rate', value: '3.2%', sub: 'Defects vs total quantity', icon: AlertTriangle, color: 'text-red-400' },
-          { label: 'Machine Utilization', value: '76%', sub: 'Active vs total machines', icon: Settings, color: 'text-blue-400' },
-          { label: 'Overtime Hours', value: '142 hrs', sub: 'Based on shift hours baseline', icon: History, color: 'text-yellow-400' },
+          { label: 'Output vs Plan', value: '0%', sub: 'Completed vs planned qty', icon: Play, color: 'text-green-400' },
+          { label: 'Rejection Rate', value: '0%', sub: 'Defects vs total quantity', icon: AlertTriangle, color: 'text-red-400' },
+          { label: 'Machine Utilization', value: '0%', sub: 'Active vs total machines', icon: Settings, color: 'text-blue-400' },
+          { label: 'Overtime Hours', value: '0 hrs', sub: 'Based on shift hours baseline', icon: History, color: 'text-yellow-400' },
         ].map((stat, i) => (
           <div key={i} className="bg-[#1e293b] p-5 rounded-xl border border-gray-800">
             <div className="flex justify-between items-start mb-4">
@@ -274,7 +323,7 @@ function DailyDashboard() {
           </div>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={productionData}>
+              <BarChart data={productionTrend}>
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 10}} />
                 <Tooltip 
                   contentStyle={{backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px'}}
@@ -320,23 +369,7 @@ function DailyDashboard() {
           <h3 className="text-lg font-bold text-white mb-1">Quality Rejection Breakdown</h3>
           <p className="text-xs text-gray-500 mb-6">Defect quantity by rejection reason</p>
           <div className="space-y-4">
-            {[
-              { label: 'Surface Defect', count: 24, color: 'bg-red-500' },
-              { label: 'Dimensional Error', count: 12, color: 'bg-red-400' },
-              { label: 'Material Impurity', count: 8, color: 'bg-red-300' },
-              { label: 'Casting Void', count: 5, color: 'bg-red-200' },
-            ].map((reason, i) => (
-              <div key={i} className="flex items-center gap-4">
-                <span className="text-xs text-gray-400 w-32">{reason.label}</span>
-                <div className="flex-1 h-2 bg-[#0f172a] rounded-full overflow-hidden">
-                  <div 
-                    className={cn("h-full rounded-full", reason.color)} 
-                    style={{ width: `${(reason.count / 50) * 100}%` }}
-                  />
-                </div>
-                <span className="text-xs font-bold text-white w-8 text-right">{reason.count}</span>
-              </div>
-            ))}
+            <p className="text-xs text-gray-500 italic">No rejection data available.</p>
           </div>
         </div>
 
@@ -344,38 +377,7 @@ function DailyDashboard() {
           <h3 className="text-lg font-bold text-white mb-1">Machine Utilization by Workshop</h3>
           <p className="text-xs text-gray-500 mb-6">Active work orders per machine</p>
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="text-gray-500 uppercase font-bold border-b border-gray-800">
-                  <th className="pb-3">Machine</th>
-                  <th className="pb-3">Workshop</th>
-                  <th className="pb-3">Type</th>
-                  <th className="pb-3">Utilization</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-800">
-                {[
-                  { name: 'CNC-001', workshop: 'Workshop A', type: 'Centrifugal', util: 70 },
-                  { name: 'CNC-002', workshop: 'Workshop B', type: 'Sand Casting', util: 85 },
-                  { name: 'CNC-003', workshop: 'Workshop A', type: 'Centrifugal', util: 45 },
-                  { name: 'CNC-004', workshop: 'Workshop C', type: 'Die Casting', util: 92 },
-                ].map((m, i) => (
-                  <tr key={i} className="hover:bg-[#0f172a] transition-colors">
-                    <td className="py-4 font-bold text-white">{m.name}</td>
-                    <td className="py-4 text-gray-400">{m.workshop}</td>
-                    <td className="py-4 text-gray-400">{m.type}</td>
-                    <td className="py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1 h-1.5 bg-[#0f172a] rounded-full overflow-hidden min-w-[60px]">
-                          <div className="h-full bg-blue-500 rounded-full" style={{ width: `${m.util}%` }} />
-                        </div>
-                        <span className="text-gray-400">{m.util}%</span>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <p className="text-xs text-gray-500 italic">No machine data available.</p>
           </div>
         </div>
       </div>

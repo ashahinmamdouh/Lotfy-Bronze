@@ -3,6 +3,7 @@ import { Routes, Route, NavLink, Navigate, useNavigate } from 'react-router-dom'
 import { cn } from '../lib/utils';
 import { Plus, Search, Download, Upload, Edit, Trash2, FileText, X, Package, CheckCircle2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import Select from 'react-select';
 import { useWorkOrders } from '../context/WorkOrderContext';
 import { useMasterData } from '../context/MasterDataContext';
 import { collection, onSnapshot, query, doc, updateDoc, increment } from 'firebase/firestore';
@@ -273,9 +274,9 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => Promis
 
   const [lines, setLines] = useState([{
     id: crypto.randomUUID(),
-    product: 'Bars',
-    material: 'BRZ-01 (Bronze C93200)',
-    processType: 'Continuous Casting',
+    product: '',
+    material: '',
+    processType: '',
     od: '',
     innerId: '',
     length: '',
@@ -297,9 +298,9 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => Promis
   const addLine = () => {
     setLines([...lines, {
       id: crypto.randomUUID(),
-      product: 'Bars',
-      material: 'BRZ-01 (Bronze C93200)',
-      processType: 'Continuous Casting',
+      product: '',
+      material: '',
+      processType: '',
       od: '',
       innerId: '',
       length: '',
@@ -664,53 +665,96 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => Promis
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                       <div>
                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Product</label>
-                        <select 
-                          value={line.product}
-                          onChange={(e) => handleLineChange(line.id, 'product', e.target.value)}
-                          className="w-full border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 bg-white"
-                        >
-                          <option>Bars</option>
-                          <option>Bushings</option>
-                          <option>Plates</option>
-                          <option>Custom</option>
-                        </select>
+                        <Select
+                          value={line.product ? { value: line.product, label: line.product } : null}
+                          onChange={(option: any) => handleLineChange(line.id, 'product', option ? option.value : '')}
+                          options={[
+                            { value: 'Bars', label: 'Bars' },
+                            { value: 'Bushings', label: 'Bushings' },
+                            { value: 'Plates', label: 'Plates' },
+                            { value: 'Custom', label: 'Custom' }
+                          ]}
+                          placeholder="Select Product..."
+                          isClearable
+                          className="text-sm"
+                          styles={{
+                            control: (base) => ({
+                              ...base,
+                              borderRadius: '0',
+                              borderColor: '#d1d5db',
+                              '&:hover': { borderColor: '#9ca3af' },
+                              boxShadow: 'none',
+                              minHeight: '38px'
+                            }),
+                            menu: (base) => ({
+                              ...base,
+                              zIndex: 50
+                            })
+                          }}
+                        />
                       </div>
                       <div>
                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Material</label>
-                        <select 
-                          value={line.material}
-                          onChange={(e) => handleLineChange(line.id, 'material', e.target.value)}
-                          className="w-full border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 bg-white"
-                        >
-                          {materials.map(m => (
-                            <option key={m._id} value={m.name}>{m.name}</option>
-                          ))}
-                          {materials.length === 0 && (
-                            <>
-                              <option>BRZ-01 (Bronze C93200)</option>
-                              <option>BRZ-02 (Alum Bronze)</option>
-                            </>
-                          )}
-                        </select>
+                        <Select
+                          value={line.material ? { value: line.material, label: line.material } : null}
+                          onChange={(option: any) => handleLineChange(line.id, 'material', option ? option.value : '')}
+                          options={materials.length > 0 
+                            ? materials.map(m => ({ value: m.name, label: m.name }))
+                            : [
+                                { value: 'BRZ-01 (Bronze C93200)', label: 'BRZ-01 (Bronze C93200)' },
+                                { value: 'BRZ-02 (Alum Bronze)', label: 'BRZ-02 (Alum Bronze)' }
+                              ]
+                          }
+                          placeholder="Select Material..."
+                          isClearable
+                          className="text-sm"
+                          styles={{
+                            control: (base) => ({
+                              ...base,
+                              borderRadius: '0',
+                              borderColor: '#d1d5db',
+                              '&:hover': { borderColor: '#9ca3af' },
+                              boxShadow: 'none',
+                              minHeight: '38px'
+                            }),
+                            menu: (base) => ({
+                              ...base,
+                              zIndex: 50
+                            })
+                          }}
+                        />
                       </div>
                       <div>
                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Process Type</label>
-                        <select 
-                          value={line.processType}
-                          onChange={(e) => handleLineChange(line.id, 'processType', e.target.value)}
-                          className="w-full border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 bg-white"
-                        >
-                          {processes.map(p => (
-                            <option key={p._id} value={p.type}>{p.type}</option>
-                          ))}
-                          {processes.length === 0 && (
-                            <>
-                              <option>Continuous Casting</option>
-                              <option>Sand Casting</option>
-                              <option>Centrifugal</option>
-                            </>
-                          )}
-                        </select>
+                        <Select
+                          value={line.processType ? { value: line.processType, label: line.processType } : null}
+                          onChange={(option: any) => handleLineChange(line.id, 'processType', option ? option.value : '')}
+                          options={processes.length > 0
+                            ? processes.map(p => ({ value: p.type, label: p.type }))
+                            : [
+                                { value: 'Continuous Casting', label: 'Continuous Casting' },
+                                { value: 'Sand Casting', label: 'Sand Casting' },
+                                { value: 'Centrifugal', label: 'Centrifugal' }
+                              ]
+                          }
+                          placeholder="Select Process..."
+                          isClearable
+                          className="text-sm"
+                          styles={{
+                            control: (base) => ({
+                              ...base,
+                              borderRadius: '0',
+                              borderColor: '#d1d5db',
+                              '&:hover': { borderColor: '#9ca3af' },
+                              boxShadow: 'none',
+                              minHeight: '38px'
+                            }),
+                            menu: (base) => ({
+                              ...base,
+                              zIndex: 50
+                            })
+                          }}
+                        />
                       </div>
                     </div>
 
