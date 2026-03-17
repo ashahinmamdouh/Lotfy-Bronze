@@ -56,8 +56,15 @@ function OpenOrdersWorkshop() {
 
   // Filter by workshop, stage and WO No
   const filteredOrders = openOrders.filter(o => {
-    const matchWorkshop = workshopFilter === 'All' || o.workshop === workshopFilter;
-    const matchStage = stageFilter === 'All' || o.stage === stageFilter;
+    const currentStage = o.stages?.find((s: any) => s.status === 'current');
+    const matchWorkshop = workshopFilter === 'All' || 
+      (o.workshop?.trim() === workshopFilter.trim()) ||
+      (currentStage?.workshop?.trim() === workshopFilter.trim());
+      
+    const matchStage = stageFilter === 'All' || 
+      (o.stage?.trim() === stageFilter.trim()) ||
+      (currentStage?.name?.trim() === stageFilter.trim());
+
     const matchWO = woFilter === '' || (o.id?.toLowerCase() || '').includes(woFilter.toLowerCase());
     return matchWorkshop && matchStage && matchWO;
   });
@@ -241,9 +248,15 @@ function WorkOrderExecution() {
   }, [workshops]);
 
   const filteredOrders = orders.filter(wo => {
-    const matchWorkshop = workshopFilter === 'All' || wo.workshop === workshopFilter || 
-      wo.stages?.find((s: any) => s.status === 'current')?.workshop === workshopFilter;
-    const matchStage = stageFilter === '' || (wo.stage?.toLowerCase() || '').includes(stageFilter.toLowerCase());
+    const currentStage = wo.stages?.find((s: any) => s.status === 'current');
+    const matchWorkshop = workshopFilter === 'All' || 
+      (wo.workshop?.trim() === workshopFilter.trim()) ||
+      (currentStage?.workshop?.trim() === workshopFilter.trim());
+      
+    const matchStage = stageFilter === '' || 
+      (wo.stage?.toLowerCase() || '').includes(stageFilter.toLowerCase()) ||
+      (currentStage?.name?.toLowerCase() || '').includes(stageFilter.toLowerCase());
+
     const matchWO = woFilter === '' || (wo.id?.toLowerCase() || '').includes(woFilter.toLowerCase());
     
     let matchStatus = true;
