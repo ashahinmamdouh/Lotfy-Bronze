@@ -20,17 +20,21 @@ const tabs = [
 
 function OpenOrdersWorkshop() {
   const { orders } = useWorkOrders();
+  const { workshops: masterWorkshops } = useMasterData();
   const [workshopFilter, setWorkshopFilter] = useState('All');
+  const [woFilter, setWoFilter] = useState('');
   
   const openOrders = orders.filter(o => o.status !== 'Completed' && o.status !== 'Canceled');
   
-  // Get unique workshops for filter
-  const uniqueWorkshops = Array.from(new Set(openOrders.map(o => o.workshop).filter(Boolean))).sort();
+  // Use workshops from master data
+  const workshopOptions = masterWorkshops.map(w => w.name).sort();
 
-  // Filter by workshop
-  const filteredOrders = workshopFilter === 'All' 
-    ? openOrders 
-    : openOrders.filter(o => o.workshop === workshopFilter);
+  // Filter by workshop and WO No
+  const filteredOrders = openOrders.filter(o => {
+    const matchWorkshop = workshopFilter === 'All' || o.workshop === workshopFilter;
+    const matchWO = woFilter === '' || (o.id?.toLowerCase() || '').includes(woFilter.toLowerCase());
+    return matchWorkshop && matchWO;
+  });
 
   // Group orders by stage
   const stageGroups = filteredOrders.reduce((acc: Record<string, any[]>, order) => {
@@ -44,8 +48,8 @@ function OpenOrdersWorkshop() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-        <div className="max-w-xs">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
+        <div className="w-full">
           <label htmlFor="workshop-filter" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Filter by Workshop</label>
           <select
             id="workshop-filter"
@@ -54,10 +58,26 @@ function OpenOrdersWorkshop() {
             className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md bg-white border"
           >
             <option value="All">All Workshops</option>
-            {uniqueWorkshops.map(ws => (
+            {workshopOptions.map(ws => (
               <option key={ws} value={ws}>{ws}</option>
             ))}
           </select>
+        </div>
+        <div className="w-full">
+          <label htmlFor="wo-filter-workshop" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Filter by WO No</label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Play className="h-4 w-4 text-gray-400" />
+            </div>
+            <input
+              id="wo-filter-workshop"
+              type="text"
+              value={woFilter}
+              onChange={(e) => setWoFilter(e.target.value)}
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              placeholder="Search WO No..."
+            />
+          </div>
         </div>
       </div>
 
