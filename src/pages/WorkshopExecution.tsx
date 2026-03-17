@@ -40,19 +40,13 @@ function WorkshopRecord() {
   const [timerStart, setTimerStart] = useState<number | null>(null);
   const [woSearch, setWoSearch] = useState('');
   const [isWoDropdownOpen, setIsWoDropdownOpen] = useState(false);
-  const [workshopSearch, setWorkshopSearch] = useState('');
-  const [isWorkshopDropdownOpen, setIsWorkshopDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const workshopDropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsWoDropdownOpen(false);
-      }
-      if (workshopDropdownRef.current && !workshopDropdownRef.current.contains(event.target as Node)) {
-        setIsWorkshopDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -89,6 +83,18 @@ function WorkshopRecord() {
       
       // If workshop changes, check if current workorder is still valid
       if (name === 'workshop') {
+        // Reset dependent fields
+        newData.machine = '';
+        newData.operator = '';
+        
+        // Auto-fill supervisor if available
+        const selectedWorkshop = workshops.find(w => w.name === value);
+        if (selectedWorkshop && selectedWorkshop.supervisor) {
+          newData.supervisor = selectedWorkshop.supervisor;
+        } else {
+          newData.supervisor = '';
+        }
+
         if (prev.workorder !== 'none') {
           const order = orders.find(o => o.id === prev.workorder);
           const currentStage = order?.stages?.find((s: any) => s.status === 'current');
@@ -116,14 +122,15 @@ function WorkshopRecord() {
     });
   };
 
-  const filteredWorkshops = useMemo(() => {
-    if (!workshopSearch) return workshops;
-    const search = workshopSearch.toLowerCase();
-    return workshops.filter(w => 
-      (w.name?.toLowerCase() || '').includes(search) ||
-      (w.stageName?.toLowerCase() || '').includes(search)
-    );
-  }, [workshops, workshopSearch]);
+  const filteredMachines = useMemo(() => {
+    if (!formData.workshop) return machines;
+    return machines.filter(m => m.workshop === formData.workshop);
+  }, [machines, formData.workshop]);
+
+  const filteredOperators = useMemo(() => {
+    if (!formData.workshop) return operators;
+    return operators.filter(o => o.workshop === formData.workshop);
+  }, [operators, formData.workshop]);
 
   const filteredWOOptions = useMemo(() => {
     const clean = (s: string) => s?.trim().toLowerCase() || '';
@@ -352,50 +359,17 @@ function WorkshopRecord() {
 
               <div>
                 <label className="block text-xs font-bold text-gray-900 mb-1">Workshop</label>
-                <div className="relative" ref={workshopDropdownRef}>
-                  <div 
-                    className="w-full bg-white border border-gray-300 px-3 py-2 rounded text-sm text-gray-900 cursor-pointer flex justify-between items-center hover:border-gray-400 transition-all font-condensed"
-                    onClick={() => setIsWorkshopDropdownOpen(!isWorkshopDropdownOpen)}
+                <div className="relative">
+                  <select 
+                    name="workshop" 
+                    value={formData.workshop} 
+                    onChange={handleChange} 
+                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm appearance-none focus:border-blue-500 focus:ring-0 font-condensed"
                   >
-                    <span className="truncate">{formData.workshop || 'Select Workshop...'}</span>
-                    <ChevronDown className={cn("h-4 w-4 text-gray-400 transition-transform", isWorkshopDropdownOpen && "rotate-180")} />
-                  </div>
-
-                  {isWorkshopDropdownOpen && (
-                    <div className="absolute z-50 mt-1 w-full bg-white border border-gray-300 shadow-xl rounded overflow-hidden">
-                      <div className="p-2 border-b border-gray-100 bg-gray-50">
-                        <div className="relative">
-                          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-                          <input
-                            type="text"
-                            className="w-full pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded focus:border-blue-500 focus:ring-0 font-condensed"
-                            placeholder="Search Workshop..."
-                            value={workshopSearch}
-                            onChange={(e) => setWorkshopSearch(e.target.value)}
-                            onClick={(e) => e.stopPropagation()}
-                            autoFocus
-                          />
-                        </div>
-                      </div>
-                      <div className="max-h-60 overflow-y-auto">
-                        {filteredWorkshops.map(w => (
-                          <div 
-                            key={w._id}
-                            className={cn(
-                              "px-3 py-2 text-sm cursor-pointer hover:bg-gray-100 transition-colors font-condensed",
-                              formData.workshop === w.name && "bg-blue-50 text-blue-700 font-bold"
-                            )}
-                            onClick={() => {
-                              handleChange({ target: { name: 'workshop', value: w.name } } as any);
-                              setIsWorkshopDropdownOpen(false);
-                            }}
-                          >
-                            {w.name}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                    <option value="">Select Workshop...</option>
+                    {workshops.map(w => <option key={w._id} value={w.name}>{w.name}</option>)}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                 </div>
               </div>
 
@@ -412,7 +386,7 @@ function WorkshopRecord() {
                     className="w-full pl-9 pr-8 py-2 bg-white border border-gray-300 rounded text-sm appearance-none focus:border-blue-500 focus:ring-0 font-condensed"
                   >
                     <option value="">Select Machine...</option>
-                    {machines.map(m => <option key={m._id} value={m.name}>{m.name}</option>)}
+                    {filteredMachines.map(m => <option key={m._id} value={m.name}>{m.name}</option>)}
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                 </div>
@@ -449,7 +423,7 @@ function WorkshopRecord() {
                     className="w-full pl-10 pr-8 py-2 bg-white border border-gray-300 rounded text-sm appearance-none focus:border-blue-500 focus:ring-0 font-condensed"
                   >
                     <option value="">Select Operator...</option>
-                    {operators.map(o => <option key={o._id} value={o.name}>{o.name}</option>)}
+                    {filteredOperators.map(o => <option key={o._id} value={o.name}>{o.name}</option>)}
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                 </div>
@@ -470,7 +444,7 @@ function WorkshopRecord() {
                     className="w-full pl-10 pr-8 py-2 bg-white border border-gray-300 rounded text-sm appearance-none focus:border-blue-500 focus:ring-0 font-condensed"
                   >
                     <option value="">Select Supervisor...</option>
-                    {operators.map(o => <option key={o._id} value={o.name}>{o.name}</option>)}
+                    {filteredOperators.map(o => <option key={o._id} value={o.name}>{o.name}</option>)}
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                 </div>
