@@ -99,7 +99,7 @@ function WorkshopRecord() {
         if (prev.workorder !== 'none') {
           const order = orders.find(o => o.id === prev.workorder);
           const currentStage = order?.stages?.find((s: any) => s.status === 'current');
-          const clean = (s: string) => s?.trim().toLowerCase() || '';
+          const clean = (s: any) => String(s || '').trim().toLowerCase();
           const targetWorkshop = clean(value);
           
           const woWorkshop = clean(order?.workshop);
@@ -153,8 +153,14 @@ function WorkshopRecord() {
           if (!isNaN(durationHrs)) {
             const [startH, startM] = prev.startTime.split(':').map(Number);
             const totalMs = (startH * 60 + startM) * 60 * 1000 + durationHrs * 60 * 60 * 1000;
-            const endH = Math.floor(totalMs / (60 * 60 * 1000)) % 24;
-            const endM = Math.floor((totalMs % (60 * 60 * 1000)) / (60 * 1000));
+            let endH = Math.floor(totalMs / (60 * 60 * 1000)) % 24;
+            let endM = Math.round((totalMs % (60 * 60 * 1000)) / (60 * 1000));
+            if (endM === 60) {
+              endM = 0;
+              endH = (endH + 1) % 24;
+            }
+            if (endH < 0) endH += 24;
+            if (endM < 0) endM += 60;
             newData.endTime = `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
           }
         }
@@ -175,7 +181,7 @@ function WorkshopRecord() {
   }, [operators, formData.workshop]);
 
   const filteredWOOptions = useMemo(() => {
-    const clean = (s: string) => s?.trim().toLowerCase() || '';
+    const clean = (s: any) => String(s || '').trim().toLowerCase();
     const targetWorkshop = clean(formData.workshop);
 
     const availableOrders = orders
@@ -893,8 +899,8 @@ function WorkshopLogs() {
 
   const filteredRecords = useMemo(() => {
     return records.filter(record => {
-      const matchWO = filterWO === '' || (record.workorder && record.workorder.toLowerCase().includes(filterWO.toLowerCase()));
-      const matchWorkshop = filterWorkshop === '' || (record.workshop && record.workshop.toLowerCase().includes(filterWorkshop.toLowerCase()));
+      const matchWO = filterWO === '' || (record.workorder && String(record.workorder).toLowerCase().includes(filterWO.toLowerCase()));
+      const matchWorkshop = filterWorkshop === '' || (record.workshop && String(record.workshop).toLowerCase().includes(filterWorkshop.toLowerCase()));
       const matchStatus = filterStatus === '' || record.status === filterStatus;
       return matchWO && matchWorkshop && matchStatus;
     });
