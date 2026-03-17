@@ -11,6 +11,7 @@ import { db } from '../firebase';
 const tabs = [
   { name: 'Workshop Record', path: 'record' },
   { name: 'Workshop History', path: 'history' },
+  { name: 'Workshop Logs', path: 'logs' },
 ];
 
 function WorkshopRecord() {
@@ -115,6 +116,16 @@ function WorkshopRecord() {
           if (!isMatch) {
             newData.workorder = 'none';
           }
+        }
+      }
+
+      // If machine changes, auto-fill default operator
+      if (name === 'machine') {
+        const selectedMachine = machines.find(m => m.number === value);
+        if (selectedMachine && selectedMachine.operator) {
+          newData.operator = selectedMachine.operator;
+        } else {
+          newData.operator = '';
         }
       }
       
@@ -386,7 +397,7 @@ function WorkshopRecord() {
                     className="w-full pl-9 pr-8 py-2 bg-white border border-gray-300 rounded text-sm appearance-none focus:border-blue-500 focus:ring-0 font-condensed"
                   >
                     <option value="">Select Machine...</option>
-                    {filteredMachines.map(m => <option key={m._id} value={m.name}>{m.name}</option>)}
+                    {filteredMachines.map(m => <option key={m._id} value={m.number}>{m.number}</option>)}
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                 </div>
@@ -832,6 +843,147 @@ function WorkshopHistory() {
   );
 }
 
+function WorkshopLogs() {
+  const [records, setRecords] = useState<any[]>([]);
+  const { user, isAuthReady } = useFirebase();
+  const [filterWO, setFilterWO] = useState('');
+  const [filterWorkshop, setFilterWorkshop] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+
+  useEffect(() => {
+    if (!isAuthReady || !user) return;
+
+    const q = query(collection(db, 'workshop_records'), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetchedRecords: any[] = [];
+      snapshot.forEach((doc) => {
+        fetchedRecords.push({ id: doc.id, ...doc.data() });
+      });
+      setRecords(fetchedRecords);
+    });
+
+    return () => unsubscribe();
+  }, [user, isAuthReady]);
+
+  const filteredRecords = useMemo(() => {
+    return records.filter(record => {
+      const matchWO = filterWO === '' || (record.workorder && record.workorder.toLowerCase().includes(filterWO.toLowerCase()));
+      const matchWorkshop = filterWorkshop === '' || (record.workshop && record.workshop.toLowerCase().includes(filterWorkshop.toLowerCase()));
+      const matchStatus = filterStatus === '' || record.status === filterStatus;
+      return matchWO && matchWorkshop && matchStatus;
+    });
+  }, [records, filterWO, filterWorkshop, filterStatus]);
+
+  const uniqueWorkshops = useMemo(() => {
+    const workshops = new Set(records.map(r => r.workshop).filter(Boolean));
+    return Array.from(workshops).sort();
+  }, [records]);
+
+  const uniqueStatuses = useMemo(() => {
+    const statuses = new Set(records.map(r => r.status).filter(Boolean));
+    return Array.from(statuses).sort();
+  }, [records]);
+
+  return (
+    <div className="space-y-4 font-condensed">
+      <div className="flex flex-col md:flex-row gap-4 mb-6">
+        <div className="flex-1">
+          <label className="block text-xs font-bold text-gray-900 mb-1">Filter by Work Order</label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              type="text"
+              value={filterWO}
+              onChange={(e) => setFilterWO(e.target.value)}
+              placeholder="Search Work Order..."
+              className="w-full pl-9 pr-3 py-2 bg-white border border-gray-300 rounded text-sm focus:border-blue-500 focus:ring-0"
+            />
+          </div>
+        </div>
+        <div className="flex-1">
+          <label className="block text-xs font-bold text-gray-900 mb-1">Filter by Workshop</label>
+          <div className="relative">
+            <select
+              value={filterWorkshop}
+              onChange={(e) => setFilterWorkshop(e.target.value)}
+              className="w-full pl-3 pr-8 py-2 bg-white border border-gray-300 rounded text-sm appearance-none focus:border-blue-500 focus:ring-0"
+            >
+              <option value="">All Workshops</option>
+              {uniqueWorkshops.map(w => <option key={w as string} value={w as string}>{w as string}</option>)}
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+          </div>
+        </div>
+        <div className="flex-1">
+          <label className="block text-xs font-bold text-gray-900 mb-1">Filter by Status</label>
+          <div className="relative">
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="w-full pl-3 pr-8 py-2 bg-white border border-gray-300 rounded text-sm appearance-none focus:border-blue-500 focus:ring-0"
+            >
+              <option value="">All Statuses</option>
+              {uniqueStatuses.map(s => <option key={s as string} value={s as string}>{s as string}</option>)}
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white border border-gray-200 shadow-sm rounded-lg overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Work Order</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Workshop</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Machine</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Operator</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Shift</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Duration</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Produced</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Scrap</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredRecords.map((record) => (
+                <tr key={record.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{record.date}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{record.workorder !== 'none' ? record.workorder : 'Maint/Setup'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.workshop}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.machine}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.operator}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.shift}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={cn(
+                      "px-2 inline-flex text-xs leading-5 font-semibold rounded-full",
+                      record.status === 'Complete' || record.status === 'Completed' ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800"
+                    )}>
+                      {record.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{record.duration || '0.0'} hrs</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{record.qtyProduced || 0}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600">{record.qtyScrap || 0}</td>
+                </tr>
+              ))}
+              {filteredRecords.length === 0 && (
+                <tr>
+                  <td colSpan={10} className="px-6 py-12 text-center text-sm text-gray-500">
+                    No records found matching your filters.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function WorkshopExecution() {
   return (
     <div className="space-y-6 bg-[#f8f9fa] min-h-screen p-6 font-condensed">
@@ -869,6 +1021,7 @@ export default function WorkshopExecution() {
             <Route path="/" element={<Navigate to="record" replace />} />
             <Route path="record" element={<WorkshopRecord />} />
             <Route path="history" element={<WorkshopHistory />} />
+            <Route path="logs" element={<WorkshopLogs />} />
           </Routes>
         </div>
       </div>
