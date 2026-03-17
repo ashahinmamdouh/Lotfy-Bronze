@@ -20,12 +20,12 @@ function WorkshopRecord() {
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     priority: '1',
-    workshop: 'Quality Workshop A',
-    machine: 'Turning01',
+    workshop: '',
+    machine: '',
     workorder: 'none',
     stage: '',
-    operator: 'Adel Tolba',
-    supervisor: 'Sarah Chen',
+    operator: '',
+    supervisor: '',
     shift: 'Day Shift',
     status: 'Under Process',
     startTime: '',
@@ -58,18 +58,6 @@ function WorkshopRecord() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  // Set initial values from master data
-  useEffect(() => {
-    if (machines.length > 0 && !formData.machine) {
-      const defaultMachine = machines.find(m => m.name === 'Turning01') || machines[0];
-      setFormData(prev => ({ ...prev, machine: defaultMachine.name }));
-    }
-    if (operators.length > 0 && !formData.operator) {
-      const defaultOperator = operators.find(o => o.name === 'Adel Tolba') || operators[0];
-      setFormData(prev => ({ ...prev, operator: defaultOperator.name }));
-    }
-  }, [machines, operators]);
 
   const selectedWO = useMemo(() => {
     return orders.find(o => o.id === formData.workorder);
@@ -423,6 +411,7 @@ function WorkshopRecord() {
                     onChange={handleChange} 
                     className="w-full pl-9 pr-8 py-2 bg-white border border-gray-300 rounded text-sm appearance-none focus:border-blue-500 focus:ring-0 font-condensed"
                   >
+                    <option value="">Select Machine...</option>
                     {machines.map(m => <option key={m._id} value={m.name}>{m.name}</option>)}
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
@@ -459,6 +448,7 @@ function WorkshopRecord() {
                     onChange={handleChange} 
                     className="w-full pl-10 pr-8 py-2 bg-white border border-gray-300 rounded text-sm appearance-none focus:border-blue-500 focus:ring-0 font-condensed"
                   >
+                    <option value="">Select Operator...</option>
                     {operators.map(o => <option key={o._id} value={o.name}>{o.name}</option>)}
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
@@ -623,7 +613,8 @@ function WorkshopRecord() {
                       name="startTime" 
                       value={formData.startTime} 
                       onChange={handleChange} 
-                      className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:border-blue-500 focus:ring-0 font-condensed" 
+                      onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                      className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:border-blue-500 focus:ring-0 font-condensed cursor-pointer" 
                     />
                     {!timerActive ? (
                       <button 
@@ -697,7 +688,8 @@ function WorkshopRecord() {
                       name="endTime" 
                       value={formData.endTime} 
                       onChange={handleChange} 
-                      className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:border-blue-500 focus:ring-0 font-condensed" 
+                      onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                      className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:border-blue-500 focus:ring-0 font-condensed cursor-pointer" 
                     />
                     <Clock className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                   </div>
