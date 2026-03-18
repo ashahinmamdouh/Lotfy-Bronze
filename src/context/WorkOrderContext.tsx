@@ -29,6 +29,7 @@ export interface WorkOrder {
   woDate?: string;
   fullName?: string;
   moldNo?: string;
+  sequence?: number;
 }
 
 interface WorkOrderContextType {

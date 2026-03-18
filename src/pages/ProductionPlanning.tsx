@@ -21,7 +21,7 @@ const tabs = [
 function OpenOrdersWorkshop() {
   const { orders } = useWorkOrders();
   const { workshops: masterWorkshops, routing: masterRouting } = useMasterData();
-  const [workshopFilter, setWorkshopFilter] = useState(localStorage.getItem('activeWorkshop') || 'All');
+  const [workshopFilter, setWorkshopFilter] = useState('All');
   const [stageFilter, setStageFilter] = useState('All');
   const [woFilter, setWoFilter] = useState('');
   
@@ -100,7 +100,6 @@ function OpenOrdersWorkshop() {
             onChange={(e) => {
               const val = e.target.value;
               setWorkshopFilter(val);
-              if (val !== 'All') localStorage.setItem('activeWorkshop', val);
               setStageFilter('All');
             }}
             className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md bg-white border"
@@ -237,7 +236,7 @@ function OpenOrdersWorkshop() {
 function WorkOrderExecution() {
   const { orders, updateOrder } = useWorkOrders();
   const { routing, workshops } = useMasterData();
-  const [workshopFilter, setWorkshopFilter] = useState(localStorage.getItem('activeWorkshop') || 'All');
+  const [workshopFilter, setWorkshopFilter] = useState('All');
   const [stageFilter, setStageFilter] = useState('');
   const [woFilter, setWoFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('Not Complete');
@@ -360,7 +359,6 @@ function WorkOrderExecution() {
             onChange={(e) => {
               const val = e.target.value;
               setWorkshopFilter(val);
-              if (val !== 'All') localStorage.setItem('activeWorkshop', val);
             }}
             className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md bg-white border"
           >
@@ -693,6 +691,124 @@ function PlaceholderTab({ title }: { title: string }) {
   );
 }
 
+function WeeklyProductionPlan() {
+  const { orders, updateOrder } = useWorkOrders();
+  const { workshops } = useMasterData();
+  const [workshopFilter, setWorkshopFilter] = useState('All');
+  
+  const workshopOptions = useMemo(() => {
+    return Array.from(new Set(workshops.map(w => w.name?.trim()).filter(Boolean))).sort();
+  }, [workshops]);
+
+  const openOrders = orders.filter(o => o.status !== 'Completed' && o.status !== 'Canceled');
+
+  const filteredOrders = useMemo(() => {
+    return openOrders.filter(o => {
+      const currentStage = o.stages?.find((s: any) => s.status === 'current');
+      const matchWorkshop = workshopFilter === 'All' || 
+        (o.workshop?.trim() === workshopFilter.trim()) ||
+        (currentStage?.workshop?.trim() === workshopFilter.trim());
+      
+      return matchWorkshop;
+    }).sort((a, b) => {
+      return new Date(a.start || 0).getTime() - new Date(b.start || 0).getTime();
+    });
+  }, [openOrders, workshopFilter]);
+
+  const handleUpdatePlannedDate = async (id: string, newDate: string) => {
+    await updateOrder(id, { start: newDate });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
+        <div className="w-full">
+          <label htmlFor="workshop-filter-weekly" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Filter by Workshop</label>
+          <select
+            id="workshop-filter-weekly"
+            value={workshopFilter}
+            onChange={(e) => setWorkshopFilter(e.target.value)}
+            className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md bg-white border"
+          >
+            <option value="All">All Workshops</option>
+            {workshopOptions.map(ws => (
+              <option key={ws} value={ws}>{ws}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="bg-white shadow overflow-hidden border border-gray-200 sm:rounded-lg">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Routing Sequence</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Work Order</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Material / Process</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current Stage</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Planned Start Date</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredOrders.map((wo, index) => {
+                const currentStage = wo.stages?.find((s: any) => s.status === 'current');
+                return (
+                  <tr key={wo.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 text-sm text-gray-900 max-w-md">
+                      <div className="flex flex-wrap gap-1 items-center">
+                        {wo.stages?.map((stage: any, idx: number) => (
+                          <React.Fragment key={idx}>
+                            <span className={cn(
+                              "px-2 py-1 text-[10px] font-bold rounded uppercase whitespace-nowrap",
+                              stage.status === 'completed' ? "bg-green-100 text-green-700" :
+                              stage.status === 'current' ? "bg-indigo-100 text-indigo-700 ring-1 ring-indigo-500" :
+                              "bg-gray-100 text-gray-500"
+                            )}>
+                              {idx + 1}. {stage.name}
+                            </span>
+                            {idx < (wo.stages?.length || 0) - 1 && <span className="text-gray-400 text-xs">➔</span>}
+                          </React.Fragment>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {wo.id}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {wo.material} - {wo.process}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                        {currentStage?.name || wo.stage || 'Unassigned'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <input 
+                        type="date" 
+                        value={wo.start || ''} 
+                        onChange={(e) => handleUpdatePlannedDate(wo.id, e.target.value)}
+                        className="px-2 py-1 border border-gray-300 rounded text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
+              {filteredOrders.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
+                    No open work orders found for this workshop.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ProductionPlanning() {
   return (
     <div className="space-y-6">
@@ -728,7 +844,7 @@ export default function ProductionPlanning() {
             <Route path="/" element={<Navigate to="execution" replace />} />
             <Route path="execution" element={<WorkOrderExecution />} />
             <Route path="workshop" element={<OpenOrdersWorkshop />} />
-            <Route path="weekly" element={<PlaceholderTab title="Weekly Production Plan" />} />
+            <Route path="weekly" element={<WeeklyProductionPlan />} />
             <Route path="capacity" element={<PlaceholderTab title="Capacity Calculation" />} />
             <Route path="gantt" element={<PlaceholderTab title="Gantt Chart" />} />
             <Route path="notification" element={<PlanningNotification />} />

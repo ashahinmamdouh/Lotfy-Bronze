@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
-import { Factory, Play, Square, Save, Search, ChevronDown, RotateCcw, Calendar, Cpu, Users, UserCheck, Clock, ClipboardList, AlertCircle, X, User } from 'lucide-react';
+import { Factory, Play, Square, Save, Search, ChevronDown, RotateCcw, Calendar, Cpu, Users, UserCheck, Clock, ClipboardList, AlertCircle, X, User, Download, Edit } from 'lucide-react';
 import { useWorkOrders } from '../context/WorkOrderContext';
 import { useMasterData } from '../context/MasterDataContext';
 import { useFirebase } from '../context/FirebaseContext';
-import { collection, addDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, query, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import * as XLSX from 'xlsx';
 
 const tabs = [
   { name: 'Workshop Record', path: 'record' },
@@ -881,6 +882,7 @@ function WorkshopLogs() {
   const [filterWO, setFilterWO] = useState('');
   const [filterWorkshop, setFilterWorkshop] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [editingRecord, setEditingRecord] = useState<any | null>(null);
 
   useEffect(() => {
     if (!isAuthReady || !user) return;
@@ -916,9 +918,42 @@ function WorkshopLogs() {
     return Array.from(statuses).sort();
   }, [records]);
 
+  const handleExport = () => {
+    if (filteredRecords.length === 0) return;
+    const exportData = filteredRecords.map(record => ({
+      Date: record.date,
+      'Work Order': record.workorder !== 'none' ? record.workorder : 'Maint/Setup',
+      Workshop: record.workshop,
+      Machine: record.machine,
+      Operator: record.operator,
+      Shift: record.shift,
+      Status: record.status,
+      'Duration (Hrs)': record.duration || '0.0',
+      Produced: record.qtyProduced || 0,
+      Scrap: record.qtyScrap || 0,
+      Remarks: record.remarks || ''
+    }));
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Workshop Logs");
+    XLSX.writeFile(wb, "Workshop_Logs.xlsx");
+  };
+
+  const handleUpdate = async () => {
+    if (!editingRecord) return;
+    try {
+      const { id, ...dataToUpdate } = editingRecord;
+      await updateDoc(doc(db, 'workshop_records', id), dataToUpdate);
+      setEditingRecord(null);
+    } catch (error) {
+      console.error("Error updating record:", error);
+      alert("Failed to update record");
+    }
+  };
+
   return (
     <div className="space-y-4 font-condensed">
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
+      <div className="flex flex-col md:flex-row gap-4 mb-6 items-end">
         <div className="flex-1">
           <label className="block text-xs font-bold text-gray-900 mb-1">Filter by Work Order</label>
           <div className="relative">
@@ -960,6 +995,13 @@ function WorkshopLogs() {
             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
           </div>
         </div>
+        <button
+          onClick={handleExport}
+          className="px-4 py-2 bg-green-600 text-white rounded text-sm font-bold hover:bg-green-700 transition-colors flex items-center gap-2 h-[38px]"
+        >
+          <Download className="h-4 w-4" />
+          Export Excel
+        </button>
       </div>
 
       <div className="bg-white border border-gray-200 shadow-sm rounded-lg overflow-hidden">
@@ -977,6 +1019,7 @@ function WorkshopLogs() {
                 <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Duration</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Produced</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Scrap</th>
+                <th scope="col" className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -999,11 +1042,20 @@ function WorkshopLogs() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{record.duration || '0.0'} hrs</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{record.qtyProduced || 0}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600">{record.qtyScrap || 0}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <button 
+                      onClick={() => setEditingRecord({ ...record })} 
+                      className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
+                      title="Edit Record"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </button>
+                  </td>
                 </tr>
               ))}
               {filteredRecords.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-6 py-12 text-center text-sm text-gray-500">
+                  <td colSpan={11} className="px-6 py-12 text-center text-sm text-gray-500">
                     No records found matching your filters.
                   </td>
                 </tr>
@@ -1012,6 +1064,63 @@ function WorkshopLogs() {
           </table>
         </div>
       </div>
+
+      {editingRecord && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col font-condensed">
+            <div className="flex justify-between items-center p-4 border-b border-gray-200">
+              <h3 className="text-lg font-bold text-gray-900 uppercase">Edit Workshop Log</h3>
+              <button onClick={() => setEditingRecord(null)} className="text-gray-400 hover:text-gray-500">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-900 mb-1">Date</label>
+                  <input type="date" value={editingRecord.date || ''} onChange={(e) => setEditingRecord({...editingRecord, date: e.target.value})} className="w-full px-3 py-2 border rounded text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-900 mb-1">Status</label>
+                  <select value={editingRecord.status || ''} onChange={(e) => setEditingRecord({...editingRecord, status: e.target.value})} className="w-full px-3 py-2 border rounded text-sm">
+                    <option>Under Process</option>
+                    <option>Complete</option>
+                    <option>On Hold</option>
+                    <option>Rejected</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-900 mb-1">Produced</label>
+                  <input type="number" value={editingRecord.qtyProduced || ''} onChange={(e) => setEditingRecord({...editingRecord, qtyProduced: e.target.value})} className="w-full px-3 py-2 border rounded text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-900 mb-1">Scrap</label>
+                  <input type="number" value={editingRecord.qtyScrap || ''} onChange={(e) => setEditingRecord({...editingRecord, qtyScrap: e.target.value})} className="w-full px-3 py-2 border rounded text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-900 mb-1">Duration (Hrs)</label>
+                  <input type="number" step="0.01" value={editingRecord.duration || ''} onChange={(e) => setEditingRecord({...editingRecord, duration: e.target.value})} className="w-full px-3 py-2 border rounded text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-900 mb-1">Shift</label>
+                  <select value={editingRecord.shift || ''} onChange={(e) => setEditingRecord({...editingRecord, shift: e.target.value})} className="w-full px-3 py-2 border rounded text-sm">
+                    <option>Day Shift</option>
+                    <option>Night Shift</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-900 mb-1">Remarks</label>
+                <textarea rows={3} value={editingRecord.remarks || ''} onChange={(e) => setEditingRecord({...editingRecord, remarks: e.target.value})} className="w-full px-3 py-2 border rounded text-sm" />
+              </div>
+            </div>
+            <div className="p-4 border-t border-gray-200 flex justify-end gap-3 bg-gray-50 rounded-b-lg">
+              <button onClick={() => setEditingRecord(null)} className="px-4 py-2 border border-gray-300 rounded text-sm font-bold text-gray-700 hover:bg-gray-100">Cancel</button>
+              <button onClick={handleUpdate} className="px-4 py-2 bg-[#2b5ba9] text-white rounded text-sm font-bold hover:bg-[#244d8f]">Save Changes</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

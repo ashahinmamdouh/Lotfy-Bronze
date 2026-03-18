@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Routes, Route, NavLink, Navigate, useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { Plus, Search, Download, Upload, Edit, Trash2, FileText, X, Package, CheckCircle2 } from 'lucide-react';
@@ -244,11 +244,23 @@ function ReservationForm({ onReserve, maxQty, defaultWo }: { onReserve: (qty: nu
 function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => Promise<void> }) {
   const navigate = useNavigate();
   const { materials, processes, routing } = useMasterData();
+  const { orders } = useWorkOrders();
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [inventoryFg, setInventoryFg] = useState<any[]>([]);
   const [inventoryWip, setInventoryWip] = useState<any[]>([]);
   const [reservations, setReservations] = useState<Record<string, any[]>>({});
+
+  const lastWoNumber = useMemo(() => {
+    if (!orders || orders.length === 0) return null;
+    const sorted = [...orders].sort((a, b) => {
+      if (a.createdAt && b.createdAt) {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+      return b.id.localeCompare(a.id);
+    });
+    return sorted[0].id;
+  }, [orders]);
 
   useEffect(() => {
     const unsubFg = onSnapshot(collection(db, 'inventory_fg'), (snapshot) => {
@@ -266,10 +278,6 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => Promis
   const [header, setHeader] = useState({
     woDate: new Date().toISOString().split('T')[0],
     workOrderNo: '',
-    priority: '1 - Normal',
-    startDate: '',
-    atpDate: '',
-    dueDate: '',
   });
 
   const [lines, setLines] = useState([{
@@ -285,6 +293,10 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => Promis
     approxWeight: '',
     dimensionNotes: '',
     commentNotes: '',
+    priority: '1 - Normal',
+    startDate: '',
+    atpDate: '',
+    dueDate: '',
   }]);
 
   const handleHeaderChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -309,6 +321,10 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => Promis
       approxWeight: '',
       dimensionNotes: '',
       commentNotes: '',
+      priority: '1 - Normal',
+      startDate: '',
+      atpDate: '',
+      dueDate: '',
     }]);
   };
 
@@ -331,7 +347,11 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => Promis
         'Mold #': '',
         'Dimension Notes': '',
         'Comment Notes': '',
-        'Approx Weight (KG)': 8.5
+        'Approx Weight (KG)': 8.5,
+        'Priority': '1 - Normal',
+        'Start Date': '',
+        'ATP Date': '',
+        'Due Date': ''
       }
     ];
 
@@ -366,6 +386,10 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => Promis
         approxWeight: String(row['Approx Weight (KG)'] || ''),
         dimensionNotes: String(row['Dimension Notes'] || ''),
         commentNotes: String(row['Comment Notes'] || ''),
+        priority: String(row['Priority'] || '1 - Normal'),
+        startDate: String(row['Start Date'] || ''),
+        atpDate: String(row['ATP Date'] || ''),
+        dueDate: String(row['Due Date'] || ''),
       }));
 
       if (newLines.length > 0) {
@@ -488,11 +512,12 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => Promis
         weight: finalWeight,
         stage: 'Planned',
         workshop: 'Foundry A',
-        start: header.startDate || new Date().toISOString().split('T')[0],
-        due: header.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        priority: header.priority.split(' - ')[1] || 'Normal',
+        start: line.startDate || new Date().toISOString().split('T')[0],
+        due: line.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        priority: line.priority.split(' - ')[1] || 'Normal',
         status: 'Planned',
         mold: line.mold || '',
+        aptDate: line.atpDate || '',
         reservations: reservations[line.id] || []
       };
     });
@@ -553,7 +578,7 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => Promis
         <div className="bg-[#FAF9F6] p-4 sm:p-8 border border-gray-200 shadow-sm">
           <h2 className="text-2xl sm:text-3xl font-serif italic text-gray-900 mb-6 border-b border-gray-200 pb-4">Order Header</h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">WO Date</label>
               <input 
@@ -565,56 +590,18 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => Promis
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Work Order No</label>
+              <div className="flex justify-between items-end mb-2">
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Work Order No</label>
+                {lastWoNumber && (
+                  <span className="text-[10px] text-gray-400 italic">Last: {lastWoNumber}</span>
+                )}
+              </div>
               <input 
                 type="text" 
                 name="workOrderNo"
                 value={header.workOrderNo}
                 onChange={handleHeaderChange}
                 placeholder="Auto-generated if empty" 
-                className="w-full border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Priority</label>
-              <select 
-                name="priority"
-                value={header.priority}
-                onChange={handleHeaderChange}
-                className="w-full border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 bg-white"
-              >
-                <option>1 - Normal</option>
-                <option>2 - High</option>
-                <option>3 - Urgent</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Start Date</label>
-              <input 
-                type="date" 
-                name="startDate"
-                value={header.startDate}
-                onChange={handleHeaderChange}
-                className="w-full border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">ATP Date</label>
-              <input 
-                type="date" 
-                name="atpDate"
-                value={header.atpDate}
-                onChange={handleHeaderChange}
-                className="w-full border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Due Date</label>
-              <input 
-                type="date" 
-                name="dueDate"
-                value={header.dueDate}
-                onChange={handleHeaderChange}
                 className="w-full border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900"
               />
             </div>
@@ -810,6 +797,48 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => Promis
                           type="text" 
                           value={line.mold}
                           onChange={(e) => handleLineChange(line.id, 'mold', e.target.value)}
+                          className="w-full border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 p-4 bg-gray-50 border border-gray-100">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Priority</label>
+                        <select 
+                          value={line.priority}
+                          onChange={(e) => handleLineChange(line.id, 'priority', e.target.value)}
+                          className="w-full border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 bg-white"
+                        >
+                          <option>1 - Normal</option>
+                          <option>2 - High</option>
+                          <option>3 - Urgent</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Start Date</label>
+                        <input 
+                          type="date" 
+                          value={line.startDate}
+                          onChange={(e) => handleLineChange(line.id, 'startDate', e.target.value)}
+                          className="w-full border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">ATP Date</label>
+                        <input 
+                          type="date" 
+                          value={line.atpDate}
+                          onChange={(e) => handleLineChange(line.id, 'atpDate', e.target.value)}
+                          className="w-full border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Due Date</label>
+                        <input 
+                          type="date" 
+                          value={line.dueDate}
+                          onChange={(e) => handleLineChange(line.id, 'dueDate', e.target.value)}
                           className="w-full border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900"
                         />
                       </div>
