@@ -492,19 +492,20 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => Promis
     setIsSaving(true);
     setError(null);
     
+    const baseWoId = header.workOrderNo || `WO-2026-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+    
     const newOrders = lines.map((line, index) => {
       const weights = calculateWeight(line);
-      const woId = header.workOrderNo 
-        ? (lines.length > 1 ? `${header.workOrderNo}-${index + 1}` : header.workOrderNo)
-        : `WO-2026-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}-${index + 1}`;
+      const woId = lines.length > 1 ? `${baseWoId} - ${index + 1}/${lines.length}` : baseWoId;
       
       const dimensions = `${line.od || '0'}x${line.innerId || '0'}x${line.length || '0'} mm`;
       
       const finalWeight = weights.hasMold ? Number(weights.weightBasedOnMold) : Number(weights.totalWeight);
       
+      const hasFraction = /\d+\/\d+/.test(woId);
       const fullNameParts = [
         woId,
-        `${index + 1}/${lines.length}`,
+        hasFraction ? null : '1/1',
         line.product,
         line.material.split(' ')[0],
         `${line.od || '0'}x${line.innerId || '0'}x${line.length || '0'} mm`,
@@ -1143,10 +1144,10 @@ function WorkOrderHistory({ orders }: { orders: any[] }) {
         const qty = Number(row['Quantity'] || row['Qty'] || 1);
         const mold = row['Mold #'] || row['Mold No'] || '';
         
-        // Generate Full Name: WO No - Line - Product - Material - Dimensions - Qty
+        const hasFraction = /\d+\/\d+/.test(id);
         const fullNameParts = [
           id,
-          '1/1', // Default line number for history imports
+          hasFraction ? null : '1/1', // Default line number for history imports if not present
           row['Product Type'] || 'Bars',
           material.split(' ')[0],
           dimensions,

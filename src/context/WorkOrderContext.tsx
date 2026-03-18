@@ -7,9 +7,12 @@ export const formatFullName = (wo: any) => {
   if (wo.fullName && wo.fullName.includes(' - ')) {
     return wo.fullName;
   }
+  
+  const hasFraction = /\d+\/\d+/.test(wo.id || '');
+  
   return [
     wo.id,
-    '1/1',
+    hasFraction ? null : '1/1',
     wo.productType || 'Bars',
     wo.material?.split(' ')[0],
     wo.dimensions?.replace(/OD:\s*([^,]+),\s*ID:\s*([^,]+),\s*L:\s*([^,]+)/, '$1x$2x$3 mm') || wo.dimensions,
@@ -157,9 +160,10 @@ export const WorkOrderProvider = ({ children }: { children: React.ReactNode }) =
             ];
 
         // Generate Full Name: WO No - Line - Product - Material - Dimensions - Qty
+        const hasFraction = /\d+\/\d+/.test(order.id || '');
         const fullName = order.fullName || [
           order.id,
-          '1/1', // Default line number if not provided
+          hasFraction ? null : '1/1', // Default line number if not provided
           order.productType || 'Bars',
           order.material?.split(' ')[0],
           order.dimensions,
