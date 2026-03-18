@@ -3,6 +3,20 @@ import { collection, onSnapshot, doc, setDoc, query, getDocs, writeBatch } from 
 import { db } from '../firebase';
 import { useFirebase } from './FirebaseContext';
 
+export const formatFullName = (wo: any) => {
+  if (wo.fullName && wo.fullName.includes(' - ')) {
+    return wo.fullName;
+  }
+  return [
+    wo.id,
+    '1/1',
+    wo.productType || 'Bars',
+    wo.material?.split(' ')[0],
+    wo.dimensions?.replace(/OD:\s*([^,]+),\s*ID:\s*([^,]+),\s*L:\s*([^,]+)/, '$1x$2x$3 mm') || wo.dimensions,
+    `Qty:${wo.qty || '1'}`
+  ].filter(part => part && part.toString().trim() !== '').join(' - ');
+};
+
 export interface WorkOrder {
   id: string;
   material: string;
@@ -142,16 +156,15 @@ export const WorkOrderProvider = ({ children }: { children: React.ReactNode }) =
               { name: 'Inspection', status: 'pending' as const, workshop: allWorkshops.find(w => w.name.includes('Quality'))?.name || 'Quality Workshop' },
             ];
 
-        // Generate Full Name: WO No, Material, Dimension, Quantity, Mold No
-        const fullNameParts = [
+        // Generate Full Name: WO No - Line - Product - Material - Dimensions - Qty
+        const fullName = order.fullName || [
           order.id,
-          order.material,
+          '1/1', // Default line number if not provided
+          order.productType || 'Bars',
+          order.material?.split(' ')[0],
           order.dimensions,
-          order.qty?.toString(),
-          order.moldNo || order.mold
-        ].filter(part => part && part.toString().trim() !== '');
-
-        const fullName = fullNameParts.join(', ');
+          `Qty:${order.qty || '1'}`
+        ].filter(part => part && part.toString().trim() !== '').join(' - ');
 
         return {
           ...order,

@@ -2,7 +2,7 @@ import React from 'react';
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { CalendarDays, Play, ArrowRight, ArrowLeft, RotateCcw, Bell, Check, X, Clock } from 'lucide-react';
-import { useWorkOrders } from '../context/WorkOrderContext';
+import { useWorkOrders, formatFullName } from '../context/WorkOrderContext';
 import { useMasterData } from '../context/MasterDataContext';
 import { collection, onSnapshot, query, where, doc, updateDoc, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -181,9 +181,9 @@ function OpenOrdersWorkshop() {
                               stageGroups[stage].map((order) => (
                                 <div key={order.id} className="p-4 hover:bg-indigo-50 transition-colors flex justify-between items-center">
                                   <div>
-                                    <div className="font-bold text-gray-900">{order.id}</div>
+                                    <div className="font-bold text-gray-900">{formatFullName(order)}</div>
                                     <div className="text-xs text-gray-500 mt-0.5">
-                                      {order.material} | {order.dimensions} | Qty: {order.qty}
+                                      {order.process} | {order.stage}
                                     </div>
                                     <div className="flex gap-2 mt-2">
                                       <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-[10px] font-bold rounded uppercase">
@@ -439,9 +439,9 @@ function WorkOrderExecution() {
           <div className="px-4 py-5 sm:px-6 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
             <div className="flex items-center gap-4">
               <div>
-                <h3 className="text-lg leading-6 font-medium text-gray-900">{wo.id}</h3>
+                <h3 className="text-lg leading-6 font-medium text-gray-900">{formatFullName(wo)}</h3>
                 <div className="flex items-center gap-2 mt-1">
-                  <p className="text-sm text-gray-500">{wo.material} - {wo.process}</p>
+                  <p className="text-sm text-gray-500">{wo.process} - {wo.stage}</p>
                   <span className={cn(
                     "px-2 py-0.5 text-[10px] font-bold rounded uppercase",
                     wo.status === 'Completed' ? "bg-green-100 text-green-700" :

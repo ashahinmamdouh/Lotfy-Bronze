@@ -4,7 +4,7 @@ import { cn } from '../lib/utils';
 import { Plus, Search, Download, Upload, Edit, Trash2, FileText, X, Package, CheckCircle2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import Select from 'react-select';
-import { useWorkOrders } from '../context/WorkOrderContext';
+import { useWorkOrders, formatFullName } from '../context/WorkOrderContext';
 import { useMasterData } from '../context/MasterDataContext';
 import { collection, onSnapshot, query, doc, updateDoc, increment } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -24,7 +24,7 @@ function OpenOrdersList({ orders }: { orders: any[] }) {
 
   const filteredOrders = orders.filter(order => {
     const matchId = order.id.toLowerCase().includes(searchId.toLowerCase()) || 
-                    (order.fullName && order.fullName.toLowerCase().includes(searchId.toLowerCase()));
+                    (formatFullName(order).toLowerCase().includes(searchId.toLowerCase()));
     const matchMaterial = order.material.toLowerCase().includes(searchMaterial.toLowerCase());
     const matchStatus = searchStatus === '' || order.status === searchStatus;
     return matchId && matchMaterial && matchStatus;
@@ -168,7 +168,7 @@ function OpenOrdersList({ orders }: { orders: any[] }) {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.woDate || order.start}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-indigo-600">{order.id}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 max-w-xs truncate" title={order.fullName}>{order.fullName}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 max-w-xs truncate" title={formatFullName(order)}>{formatFullName(order)}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.material}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.process}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.dimensions}</td>
@@ -494,14 +494,25 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => Promis
     
     const newOrders = lines.map((line, index) => {
       const weights = calculateWeight(line);
-      const woId = header.workOrderNo || `WO-2026-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}-${index + 1}`;
+      const woId = header.workOrderNo 
+        ? (lines.length > 1 ? `${header.workOrderNo}-${index + 1}` : header.workOrderNo)
+        : `WO-2026-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}-${index + 1}`;
       
-      let dimensions = `OD: ${line.od || 0}`;
-      if (line.innerId) dimensions += `, ID: ${line.innerId}`;
-      if (line.length) dimensions += `, L: ${line.length}`;
+      const dimensions = `${line.od || '0'}x${line.innerId || '0'}x${line.length || '0'} mm`;
       
       const finalWeight = weights.hasMold ? Number(weights.weightBasedOnMold) : Number(weights.totalWeight);
       
+      const fullNameParts = [
+        woId,
+        `${index + 1}/${lines.length}`,
+        line.product,
+        line.material.split(' ')[0],
+        `${line.od || '0'}x${line.innerId || '0'}x${line.length || '0'} mm`,
+        `Qty:${line.quantity || '1'}`
+      ].filter(part => part && part.toString().trim() !== '');
+
+      const fullName = fullNameParts.join(' - ');
+
       return {
         id: woId,
         woDate: header.woDate,
@@ -518,7 +529,8 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => Promis
         status: 'Planned',
         mold: line.mold || '',
         aptDate: line.atpDate || '',
-        reservations: reservations[line.id] || []
+        reservations: reservations[line.id] || [],
+        fullName
       };
     });
 
@@ -658,6 +670,11 @@ function CreateWorkOrder({ onAddOrder }: { onAddOrder: (orders: any[]) => Promis
                   )}
                   
                   <div className="p-6 space-y-6">
+                    <div className="flex items-center justify-between border-b border-gray-200 pb-4">
+                      <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider">
+                        Work Order Line {index + 1}/{lines.length}
+                      </h3>
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                       <div>
                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Product <span className="text-red-500">*</span></label>
@@ -1000,7 +1017,7 @@ function WorkOrderHistory({ orders }: { orders: any[] }) {
 
   const filteredOrders = orders.filter(order => {
     const matchId = order.id.toLowerCase().includes(searchId.toLowerCase()) || 
-                    (order.fullName && order.fullName.toLowerCase().includes(searchId.toLowerCase()));
+                    (formatFullName(order).toLowerCase().includes(searchId.toLowerCase()));
     const matchMaterial = order.material.toLowerCase().includes(searchMaterial.toLowerCase());
     const matchStatus = searchStatus === '' || order.status === searchStatus;
     return matchId && matchMaterial && matchStatus;
@@ -1083,7 +1100,7 @@ function WorkOrderHistory({ orders }: { orders: any[] }) {
     const exportData = filteredOrders.map(order => ({
       'WO Date': order.woDate || order.createdAt || order.start,
       'Work Order Number': order.id,
-      'Full Name': order.fullName,
+      'Full Name': formatFullName(order),
       'Product Type': order.productType || '-',
       'Start Date': order.start,
       'Due Date': order.due,
@@ -1126,16 +1143,17 @@ function WorkOrderHistory({ orders }: { orders: any[] }) {
         const qty = Number(row['Quantity'] || row['Qty'] || 1);
         const mold = row['Mold #'] || row['Mold No'] || '';
         
-        // Generate Full Name: WO No, Material, Dimension, Quantity, Mold No
+        // Generate Full Name: WO No - Line - Product - Material - Dimensions - Qty
         const fullNameParts = [
           id,
-          material,
+          '1/1', // Default line number for history imports
+          row['Product Type'] || 'Bars',
+          material.split(' ')[0],
           dimensions,
-          qty.toString(),
-          mold
+          `Qty:${qty}`
         ].filter(part => part && part.toString().trim() !== '');
 
-        const fullName = fullNameParts.join(', ');
+        const fullName = fullNameParts.join(' - ');
 
         return {
           id,
@@ -1299,7 +1317,7 @@ function WorkOrderHistory({ orders }: { orders: any[] }) {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.woDate || order.createdAt || order.start}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-indigo-600">{order.id}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 max-w-xs truncate" title={order.fullName}>{order.fullName}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 max-w-xs truncate" title={formatFullName(order)}>{formatFullName(order)}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.productType || '-'}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.start}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.due}</td>
