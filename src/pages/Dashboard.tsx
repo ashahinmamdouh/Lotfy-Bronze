@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, Cell } from 'recharts';
 import { ClipboardList, CheckCircle, AlertTriangle, Package, LayoutDashboard, Calendar, Filter, Download, Play, CheckCircle2, Clock, Settings, History } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -173,12 +173,29 @@ function DailyDashboard() {
   const [filters, setFilters] = useState({
     workshop: 'All Workshops',
     process: 'All Processes',
-    dateFrom: new Date().toISOString().split('T')[0],
+    dateFrom: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     dateTo: new Date().toISOString().split('T')[0],
   });
 
+  const filteredOrders = useMemo(() => {
+    return orders.filter(o => {
+      const matchWorkshop = filters.workshop === 'All Workshops' || o.workshop === filters.workshop;
+      const matchProcess = filters.process === 'All Processes' || o.process === filters.process;
+      
+      let matchDate = true;
+      if (filters.dateFrom && filters.dateTo) {
+        const orderDate = o.woDate || o.start || o.createdAt?.split('T')[0] || o.due;
+        if (orderDate) {
+          matchDate = orderDate >= filters.dateFrom && orderDate <= filters.dateTo;
+        }
+      }
+
+      return matchWorkshop && matchProcess && matchDate;
+    });
+  }, [orders, filters]);
+
   const handleExport = () => {
-    const exportData = orders.map(o => ({
+    const exportData = filteredOrders.map(o => ({
       'WO No': o.id,
       'Material': o.material,
       'Workshop': o.workshop,
@@ -191,7 +208,7 @@ function DailyDashboard() {
     XLSX.writeFile(wb, "production_dashboard.xlsx");
   };
 
-  const statusCounts = orders.reduce((acc: any, o) => {
+  const statusCounts = filteredOrders.reduce((acc: any, o) => {
     const status = o.status || 'Not Started';
     acc[status] = (acc[status] || 0) + 1;
     return acc;
@@ -204,27 +221,47 @@ function DailyDashboard() {
     'Canceled': 0
   });
 
-  const totalOrders = orders.length || 1;
+  const totalOrders = filteredOrders.length || 1;
 
-  // Production Trend (last 7 days)
-  const last7Days = [...Array(7)].map((_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (6 - i));
-    return d.toISOString().split('T')[0];
-  });
+  // Production Trend (based on date range)
+  const dateRangeDays = useMemo(() => {
+    if (!filters.dateFrom || !filters.dateTo) {
+      return [...Array(7)].map((_, i) => {
+        const d = new Date();
+        d.setDate(d.getDate() - (6 - i));
+        return d.toISOString().split('T')[0];
+      });
+    }
+    const start = new Date(filters.dateFrom);
+    const end = new Date(filters.dateTo);
+    const days = [];
+    let current = new Date(start);
+    while (current <= end) {
+      days.push(current.toISOString().split('T')[0]);
+      current.setDate(current.getDate() + 1);
+    }
+    if (days.length > 30) {
+      return days.slice(-30);
+    }
+    return days;
+  }, [filters.dateFrom, filters.dateTo]);
 
-  const productionTrend = last7Days.map(date => {
-    const dayOrders = orders.filter(o => o.completionDate?.startsWith(date));
+  const productionTrend = dateRangeDays.map(date => {
+    const dayOrders = filteredOrders.filter(o => o.completionDate?.startsWith(date));
     const produced = dayOrders.reduce((acc, o) => acc + (Number(o.weight) || 0), 0);
-    const plannedOrders = orders.filter(o => o.woDate?.startsWith(date) || o.start?.startsWith(date));
+    const plannedOrders = filteredOrders.filter(o => o.woDate?.startsWith(date) || o.start?.startsWith(date));
     const planned = plannedOrders.reduce((acc, o) => acc + (Number(o.weight) || 0), 0);
     
     return {
-      name: new Date(date).toLocaleDateString('en-US', { weekday: 'short' }),
+      name: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       produced,
       planned
     };
   });
+
+  const totalProduced = productionTrend.reduce((acc, p) => acc + p.produced, 0);
+  const totalPlanned = productionTrend.reduce((acc, p) => acc + p.planned, 0);
+  const outputVsPlan = totalPlanned > 0 ? Math.round((totalProduced / totalPlanned) * 100) + '%' : '0%';
 
   return (
     <div className="bg-[#0f172a] min-h-screen p-6 text-gray-100 rounded-lg">
@@ -283,16 +320,13 @@ function DailyDashboard() {
             className="w-full bg-[#0f172a] border border-gray-700 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none" 
           />
         </div>
-        <button className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-md font-bold text-sm transition-colors">
-          Apply Filters
-        </button>
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         {[
           { label: 'Active Work Orders', value: statusCounts['In Production'] + statusCounts['Not Started'], sub: 'Currently in progress', icon: ClipboardList, color: 'text-blue-400' },
-          { label: 'Output vs Plan', value: '0%', sub: 'Completed vs planned qty', icon: Play, color: 'text-green-400' },
+          { label: 'Output vs Plan', value: outputVsPlan, sub: 'Completed vs planned qty', icon: Play, color: 'text-green-400' },
           { label: 'Rejection Rate', value: '0%', sub: 'Defects vs total quantity', icon: AlertTriangle, color: 'text-red-400' },
           { label: 'Machine Utilization', value: '0%', sub: 'Active vs total machines', icon: Settings, color: 'text-blue-400' },
           { label: 'Overtime Hours', value: '0 hrs', sub: 'Based on shift hours baseline', icon: History, color: 'text-yellow-400' },
