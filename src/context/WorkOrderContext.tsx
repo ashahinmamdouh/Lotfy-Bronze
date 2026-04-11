@@ -103,7 +103,8 @@ export const WorkOrderProvider = ({ children }: { children: React.ReactNode }) =
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const fetchedOrders: WorkOrder[] = [];
       snapshot.forEach((doc) => {
-        fetchedOrders.push({ id: doc.id, ...doc.data() } as WorkOrder);
+        const data = doc.data();
+        fetchedOrders.push({ ...data, id: data.id || doc.id } as WorkOrder);
       });
       setOrders(fetchedOrders);
     }, (error) => {
@@ -183,7 +184,8 @@ export const WorkOrderProvider = ({ children }: { children: React.ReactNode }) =
 
       const batch = writeBatch(db);
       for (const order of formattedOrders) {
-        const docRef = doc(db, 'workOrders', order.id);
+        const docId = order.id.replace(/\//g, '_');
+        const docRef = doc(db, 'workOrders', docId);
         batch.set(docRef, order);
       }
       await batch.commit();
@@ -195,7 +197,8 @@ export const WorkOrderProvider = ({ children }: { children: React.ReactNode }) =
   const updateOrder = async (id: string, updatedData: Partial<WorkOrder>) => {
     if (!user) return;
     try {
-      await setDoc(doc(db, 'workOrders', id), updatedData, { merge: true });
+      const docId = id.replace(/\//g, '_');
+      await setDoc(doc(db, 'workOrders', docId), updatedData, { merge: true });
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'workOrders', user);
     }
@@ -204,8 +207,9 @@ export const WorkOrderProvider = ({ children }: { children: React.ReactNode }) =
   const deleteOrder = async (id: string) => {
     if (!user) return;
     try {
+      const docId = id.replace(/\//g, '_');
       const { deleteDoc } = await import('firebase/firestore');
-      await deleteDoc(doc(db, 'workOrders', id));
+      await deleteDoc(doc(db, 'workOrders', docId));
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, 'workOrders', user);
     }
@@ -216,7 +220,8 @@ export const WorkOrderProvider = ({ children }: { children: React.ReactNode }) =
     try {
       const batch = writeBatch(db);
       ids.forEach(id => {
-        batch.delete(doc(db, 'workOrders', id));
+        const docId = id.replace(/\//g, '_');
+        batch.delete(doc(db, 'workOrders', docId));
       });
       await batch.commit();
     } catch (error) {
